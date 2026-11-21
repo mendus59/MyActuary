@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Privacy: no network access at all (connect-src 'none'). Everything runs on this page. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'none'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
+  <title>MyActuary · Personal Life Table</title>
+  <meta name="description" content="Build a personal actuarial life table from published U.S. mortality data and evidence-based risk factors. Runs entirely in your browser; nothing is sent anywhere.">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <a class="brand" href="./" aria-label="MyActuary home">
+        <svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><rect width="32" height="32" rx="7" fill="currentColor"/><path d="M6 9 C 12 9, 16 10, 19 15 S 24 23, 26 24" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round"/><circle cx="6" cy="9" r="2" fill="#fff"/></svg>
+        <span>MyActuary</span>
+      </a>
+      <nav class="topnav">
+        <button type="button" class="btn-link" id="nav-import">Load a saved report</button>
+        <button type="button" class="btn-link" id="nav-method">Methodology</button>
+      </nav>
+    </div>
+  </header>
+
+  <main id="app" class="wrap">
+    <noscript><p class="notice">MyActuary needs JavaScript. It runs entirely in your browser and sends nothing anywhere.</p></noscript>
+
+    <!-- Landing -->
+    <section id="view-intro" class="view" hidden>
+      <div class="hero">
+        <p class="eyebrow">Personal mortality assessment</p>
+        <h1>Your own actuarial life table, built from the evidence.</h1>
+        <p class="lede">Answer about 20 questions on health and habits. MyActuary starts from the Social Security Administration's latest U.S. period life table and adjusts each year's probability of death using hazard ratios from large peer-reviewed studies. You get year-by-year death probabilities, a survival curve, life expectancy, and the factors costing you the most years.</p>
+        <div class="hero-actions">
+          <button type="button" class="btn btn-primary" id="start">Start assessment</button>
+          <button type="button" class="btn" id="intro-import">Load a saved PDF report</button>
+          <button type="button" class="btn btn-ghost" id="resume" hidden>Resume where you left off</button>
+        </div>
+        <ul class="trust">
+          <li><strong>Private by design.</strong> No accounts, no analytics, no server. A browser security policy on this page blocks all network requests.</li>
+          <li><strong>Saved only in this tab.</strong> Answers live in session storage and disappear when you close the tab. Export a PDF to keep them.</li>
+          <li><strong>Cited.</strong> Every adjustment links to the study it comes from.</li>
+        </ul>
+      </div>
+      <aside class="disclaimer" role="note">
+        <strong>Not medical or financial advice.</strong> MyActuary is an educational estimate based on population averages. It cannot account for everything about your health and is no substitute for a clinician, a licensed insurance underwriter, or a financial planner.
+      </aside>
+    </section>
+
+    <!-- Questionnaire -->
+    <section id="view-form" class="view" hidden>
+      <div class="form-layout">
+        <aside class="stepper" aria-label="Sections">
+          <ol id="stepper-list"></ol>
+          <div class="stepper-foot">
+            <div class="progress" aria-hidden="true"><span id="progress-bar"></span></div>
+            <p id="progress-text" class="muted small"></p>
+          </div>
+        </aside>
+        <div class="form-main">
+          <form id="questionnaire" novalidate autocomplete="off"></form>
+          <div class="form-nav">
+            <button type="button" class="btn" id="prev">Back</button>
+            <span class="spacer"></span>
+            <button type="button" class="btn btn-ghost" id="skip-to-report">See report now</button>
+            <button type="button" class="btn btn-primary" id="next">Next</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Report -->
+    <section id="view-report" class="view" hidden>
+      <div class="report-toolbar">
+        <button type="button" class="btn" id="edit">Edit answers</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn btn-ghost" id="clear">Clear my data</button>
+        <button type="button" class="btn btn-primary" id="export-pdf">Download PDF report</button>
+      </div>
+      <div id="report"></div>
+    </section>
+
+    <!-- Methodology -->
+    <section id="view-method" class="view" hidden>
+      <div class="report-toolbar">
+        <button type="button" class="btn" id="method-back">Back</button>
+      </div>
+      <div id="method"></div>
+    </section>
+
+    <input type="file" id="import-file" accept="application/pdf,.pdf,application/json,.json" hidden>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap">
+      <p>MyActuary is an educational tool, not medical, insurance or financial advice. Baseline mortality: SSA Office of the Chief Actuary, 2023 period life table (2026 Trustees Report). Source code is open on <a href="https://github.com/mendus59/MyActuary" rel="noopener noreferrer">GitHub</a>.</p>
+    </div>
+  </footer>
+
+  <div id="chart-tip" class="chart-tip" hidden></div>
+  <script src="vendor/jspdf.umd.min.js"></script>
+  <script src="vendor/jspdf.plugin.autotable.min.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
