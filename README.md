@@ -1,5 +1,19 @@
 # MyActuary
 
+<!-- site-summary:start -->
+<!-- This section is this project's card on https://mendus59.github.io and is copied there daily.
+     Keep it true of what's on main: one plain-text summary line (max 160 characters), then 1-6 short bullets.
+     See CLAUDE.md ("Site summary"). -->
+Build a personal actuarial life table from U.S. mortality data and evidence-based risk factors, entirely in your browser.
+
+- Starts from the SSA 2023 period life table and adjusts it for 30 factors grouped the way life insurers underwrite.
+- Covers health and habits, medical history, family history and genetics, risky jobs and hobbies, driving, and life circumstances.
+- Shows your life expectancy, survival curve, chance of reaching milestone ages and an illustrative underwriting-style class.
+- Ranks the changeable factors costing you the most years by how much life expectancy you could gain.
+- Nothing leaves your browser: no backend, no analytics, and every network request is blocked.
+- Download a PDF report with the full methodology and 45 references, and load it later to pick up where you left off.
+<!-- site-summary:end -->
+
 A private, client-side web app that builds a **personal actuarial life table**: year-by-year probabilities of death (qx), a survival curve, life expectancy, and a ranked list of the modifiable factors costing you the most years.
 
 **Live site:** https://mendus59.github.io/MyActuary/ (after GitHub Pages is enabled; see below)
