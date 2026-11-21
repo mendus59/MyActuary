@@ -4,6 +4,7 @@ import { FACTORS, DIET_ITEMS, computeBMI, metHours } from './factors.js';
 import { CITATIONS, citationLink } from './citations.js';
 import { MODEL_VERSION, DEFAULT_IMPROVEMENT } from './engine.js';
 import { fmt } from './format.js';
+import { CONDITIONS, RELATIVES, FAMILY_CONDITIONS, AGE_BANDS } from './medical.js';
 
 const MARK = 'MYACTUARY-DATA:v1:';
 const NAVY = [11, 59, 111];
@@ -262,7 +263,7 @@ export async function exportPdf(answers, r) {
     if (f.id === 'bmi' && bmi != null) v = `BMI ${bmi.toFixed(1)} (${c.answer})`;
     if (f.id === 'activity' && met != null) v = `${met.toFixed(1)} MET-hours/week (${c.answer})`;
     if (f.id === 'diet' && c) v = `${DIET_ITEMS.filter((d) => answers.diet.items?.[d.id]).length} of 9 Mediterranean-style items (${c.answer})`;
-    const rel = !c ? (f.kind === 'excess' ? 'none' : '1.00x') : c.excess ? 'added risk' : `${c.relative.toFixed(2)}x`;
+    const rel = !c ? (f.kind === 'excess' || f.kind === 'custom' ? 'none' : '1.00x') : c.excess ? 'added risk' : `${c.relative.toFixed(2)}x${f.kind === 'custom' && f.excessAt && f.excessAt(answers[f.id]) > 0 ? ' + added risk' : ''}`;
     inputRows.push([f.label, v, rel]);
   }
   autoTable(doc, {
@@ -294,7 +295,7 @@ export async function exportPdf(answers, r) {
   head('Projection basis');
   para(`Cohort basis (default): baseline death rates for each future calendar year are reduced by ${(DEFAULT_IMPROVEMENT * 100).toFixed(1)}% a year from 2023, consistent with the Trustees' long-range intermediate assumption. Period basis: today's death rates are held fixed.`);
   head('Personal adjustments');
-  para('Each response maps to an all-cause mortality hazard ratio from a large meta-analysis or pooled cohort study. Because the baseline already reflects the U.S. population mix, each ratio is divided by its population-weighted mean (using approximate NHANES/NHIS prevalence), so an unknown answer leaves the baseline unchanged. Adjustments are applied as proportional hazards, q\'x = 1 - (1 - qx)^M. Cancer, occupation, hazardous activities and driving are instead added to the hazard as extra annual risk (SEER relative survival by type and stage; BLS fatal-injury rates; published fatality rates per participant; NHTSA motor-vehicle death rates scaled by driving record and seat-belt use). Log hazard ratios attenuate linearly between ages 60 and 90 (by 0-50% by factor); factors sharing cardiometabolic pathways are combined with diminishing weights (1, 0.8, 0.64 ... floored at 0.5) to avoid double counting; and the combined multiplier saturates smoothly between 0.35x and 10x. Former smokers\' excess risk declines with time since quitting. Race/ethnicity and state use age-specific hazard ratios solved to reproduce published NCHS life expectancies relative to the U.S. total.');
+  para('Each response maps to an all-cause mortality hazard ratio from a large meta-analysis or pooled cohort study. Because the baseline already reflects the U.S. population mix, each ratio is divided by its population-weighted mean (using approximate NHANES/NHIS prevalence), so an unknown answer leaves the baseline unchanged. Adjustments are applied as proportional hazards, q\'x = 1 - (1 - qx)^M. Cancer, occupation, hazardous activities and driving are instead added to the hazard as extra annual risk (SEER relative survival by type and stage; BLS fatal-injury rates; published fatality rates per participant; NHTSA motor-vehicle death rates scaled by driving record and seat-belt use). Log hazard ratios attenuate linearly between ages 60 and 90 (by 0-50% by factor); factors sharing cardiometabolic pathways are combined with diminishing weights (1, 0.8, 0.64 ... floored at 0.5) to avoid double counting; and the combined multiplier saturates smoothly between 0.35x and 10x. Former smokers\' excess risk declines with time since quitting. Other diagnosed conditions use cited hazard ratios (or added annual risk for dialysis, kidney transplant and pulmonary fibrosis), normalized by age-scaled prevalence. Family history uses a MyActuary method: the published disease relative risk RR for an affected first-degree relative (RR^1.4 if diagnosed early, at least RR^1.7 for two or more relatives; half the excess for grandparents, aunts and uncles) is converted to all-cause risk as 1 + s(RR - 1), where s is that cause\'s share of U.S. deaths at the person\'s age and sex (CDC WONDER), then divided by the population-average effect. Race/ethnicity and state use age-specific hazard ratios solved to reproduce published NCHS life expectancies relative to the U.S. total.');
   head('Outputs');
   para('Life expectancy is the complete expectation of life assuming uniform deaths within each year of age. The mortality ratio is expected deaths over the next ten years relative to the average person. The underwriting-style class maps that ratio to conventional labels (substandard tables are +25% each) and is illustrative only. Detriments are ranked by recomputing the full table with one factor moved to a realistic target.');
   head('Limitations');
@@ -391,6 +392,21 @@ function sanitizeAnswers(a) {
   };
   for (const f of FACTORS) {
     if (f.derived) continue;
+    if (f.id === 'conditions') {
+      const src = a.conditions;
+      if (src && typeof src === 'object') out.conditions = { answered: !!src.answered, items: Object.fromEntries(CONDITIONS.map((c) => [c.id, !!src.items?.[c.id]])) };
+      continue;
+    }
+    if (f.id === 'familyHx') {
+      const src = a.familyHx;
+      if (!src || typeof src !== 'object') continue;
+      const ok = (list, v) => (list.some((o) => o.id === v) ? v : '');
+      const entries = (Array.isArray(src.entries) ? src.entries : []).slice(0, 40).map((e) => ({
+        rel: ok(RELATIVES, e?.rel), cond: ok(FAMILY_CONDITIONS, e?.cond), age: ok(AGE_BANDS, e?.age),
+      }));
+      out.familyHx = { answered: !!src.answered, complete: !!src.complete, entries };
+      continue;
+    }
     if (f.kind === 'excess') {
       const src = a[f.id];
       if (!src || typeof src !== 'object') continue;

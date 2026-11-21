@@ -1,3 +1,4 @@
+import { conditionsFactor, sleepApneaFactor, familyHistoryFactor } from './medical.js';
 // Risk-factor definitions.
 //
 // Each option carries:
@@ -25,7 +26,7 @@ export const SECTIONS = [
   { id: 'clinical', title: 'Clinical measures', blurb: 'From your most recent check-up. Choose "I don\u2019t know" if unsure; the model then assumes the population average.' },
   { id: 'history', title: 'Medical history', blurb: 'Conditions a doctor has diagnosed.' },
   { id: 'cancer', title: 'Cancer', blurb: 'Survival after cancer depends mostly on the type and the stage at diagnosis.' },
-  { id: 'family', title: 'Family and genetic history', blurb: 'Parental longevity and known inherited conditions.' },
+  { id: 'family', title: 'Family and genetic history', blurb: 'Parental longevity, inherited conditions, and the illnesses your blood relatives have had.' },
   { id: 'exposures', title: 'Occupation, activities and driving', blurb: 'Insurers ask about these because they add accident risk on top of health risk.' },
   { id: 'life', title: 'Life circumstances', blurb: 'Where you live, income, education and relationships are strong, well-documented predictors of U.S. mortality.' },
   { id: 'wellbeing', title: 'Wellbeing and overall health', blurb: 'Social connection, mood and how you rate your own health.' },
@@ -809,6 +810,8 @@ FACTORS.push(
     describe(v) { const o = LIVER.find((x) => x.id === v.status); return o ? o.label : ''; },
   },
 );
+
+FACTORS.push(sleepApneaFactor, conditionsFactor, familyHistoryFactor);
 
 export const FACTOR_BY_ID = Object.fromEntries(FACTORS.map((f) => [f.id, f]));
 
