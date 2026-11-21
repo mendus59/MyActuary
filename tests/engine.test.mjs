@@ -26,6 +26,9 @@ test('an average respondent reproduces published SSA period life expectancy', ()
 
 test('prevalence weights sum to 1 and every factor cites a known source', () => {
   for (const f of FACTORS) {
+    assert.ok(f.cite.length > 0);
+    f.cite.forEach((c) => assert.ok(CITATIONS[c], `${f.id} cites unknown ${c}`));
+    if (f.kind === 'excess') continue;
     const s = f.options.reduce((a, o) => a + o.prev, 0);
     assert.ok(Math.abs(s - 1) < 0.005, `${f.id} prevalence sums to ${s}`);
     assert.ok(f.cite.length > 0);
@@ -83,4 +86,29 @@ test('BMI and activity are derived from raw inputs', () => {
   const r = resolveAnswers({ body: { units: 'imperial', heightFt: 5, heightIn: 10, weightLb: 230 }, activity: { moderateMin: 150, vigorousMin: 0 } });
   assert.equal(r.bmi, 'b30');
   assert.equal(r.activity, 'a7');
+});
+
+test('cancer is modeled by type and stage', () => {
+  const opts = { currentYear: 2026 };
+  const base = { person: { age: 55, sex: 'female' } };
+  const none = evaluate({ ...base, cancer: { status: 'none' } }, opts);
+  const breast = evaluate({ ...base, cancer: { status: 'recent', when: 'lt1', type: 'breast', stage: 'local' } }, opts);
+  const lung = evaluate({ ...base, cancer: { status: 'recent', when: 'lt1', type: 'lung', stage: 'distant' } }, opts);
+  assert.ok(none.e >= breast.e && breast.e > lung.e + 15);
+  // 5-year survival for distant lung cancer should be in the single digits.
+  assert.ok(lung.rows[5].S < 0.12, `distant lung 5y survival ${lung.rows[5].S}`);
+});
+
+test('accident exposures add risk and rank as modifiable', () => {
+  const r = evaluate({ person: { age: 35, sex: 'male' }, hazards: { answered: true, items: { pilot: true } }, driving: { record: 'dui', belt: 'notalways' } }, { currentYear: 2026 });
+  const ids = r.detriments.map((d) => d.id);
+  assert.ok(ids.includes('hazards') && ids.includes('driving'));
+  assert.ok(r.e < r.eBase);
+});
+
+test('socioeconomic gradient is in the expected direction and range', () => {
+  const lo = evaluate({ person: { age: 40, sex: 'male' }, income: 'q1', education: 'lths' }, { currentYear: 2026 });
+  const hi = evaluate({ person: { age: 40, sex: 'male' }, income: 'q5', education: 'ba' }, { currentYear: 2026 });
+  const gap = hi.e - lo.e;
+  assert.ok(gap > 4 && gap < 15, `income/education gap ${gap}`);
 });

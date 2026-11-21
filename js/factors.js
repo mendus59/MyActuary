@@ -20,11 +20,15 @@
 export const SECTIONS = [
   { id: 'about', title: 'About you', blurb: 'The baseline table is chosen from your age and sex.' },
   { id: 'body', title: 'Body measurements', blurb: 'Used to compute body-mass index (BMI).' },
-  { id: 'habits', title: 'Tobacco and alcohol', blurb: 'Two of the largest modifiable drivers of adult mortality.' },
+  { id: 'habits', title: 'Tobacco, alcohol and drugs', blurb: 'Among the largest modifiable drivers of adult mortality.' },
   { id: 'activity', title: 'Activity, sleep and diet', blurb: 'Typical week over the last few months.' },
-  { id: 'clinical', title: 'Clinical measures', blurb: 'From your most recent check-up. Choose "I don’t know" if unsure; the model then assumes the population average.' },
-  { id: 'history', title: 'Medical and family history', blurb: 'Diagnosed conditions and parental history.' },
-  { id: 'wellbeing', title: 'Social and mental wellbeing', blurb: 'Social connection and mood have measurable effects on survival.' },
+  { id: 'clinical', title: 'Clinical measures', blurb: 'From your most recent check-up. Choose "I don\u2019t know" if unsure; the model then assumes the population average.' },
+  { id: 'history', title: 'Medical history', blurb: 'Conditions a doctor has diagnosed.' },
+  { id: 'cancer', title: 'Cancer', blurb: 'Survival after cancer depends mostly on the type and the stage at diagnosis.' },
+  { id: 'family', title: 'Family and genetic history', blurb: 'Parental longevity and known inherited conditions.' },
+  { id: 'exposures', title: 'Occupation, activities and driving', blurb: 'Insurers ask about these because they add accident risk on top of health risk.' },
+  { id: 'life', title: 'Life circumstances', blurb: 'Income, education and relationships are strong, well-documented predictors of U.S. mortality.' },
+  { id: 'wellbeing', title: 'Wellbeing and overall health', blurb: 'Social connection, mood and how you rate your own health.' },
 ];
 
 export const DIET_ITEMS = [
@@ -304,7 +308,7 @@ export const FACTORS = [
   },
   {
     id: 'family',
-    section: 'history',
+    section: 'family',
     label: 'Parental longevity',
     question: 'Which best describes your biological parents?',
     group: 'family',
@@ -319,7 +323,7 @@ export const FACTORS = [
   },
   {
     id: 'social',
-    section: 'wellbeing',
+    section: 'life',
     label: 'Social connection',
     question: 'How connected do you feel to friends, family or community?',
     group: 'psychosocial',
@@ -350,6 +354,322 @@ export const FACTORS = [
     advice: 'Depression is associated with about 50% excess mortality in community samples (Cuijpers 2014). If you are struggling, please talk to a clinician; in the U.S. you can call or text 988 any time.',
   },
 ];
+
+
+/* ---------- Additional underwriting factors ---------- */
+
+// 5-year relative survival by cancer type and SEER summary stage (approximate, SEER 22, 2014-2020).
+export const CANCER_TYPES = [
+  { id: 'breast', label: 'Breast', rs: { local: 0.99, regional: 0.86, distant: 0.31 } },
+  { id: 'prostate', label: 'Prostate', rs: { local: 0.995, regional: 0.99, distant: 0.34 } },
+  { id: 'colorectal', label: 'Colon or rectum', rs: { local: 0.91, regional: 0.73, distant: 0.13 } },
+  { id: 'lung', label: 'Lung', rs: { local: 0.63, regional: 0.35, distant: 0.08 } },
+  { id: 'melanoma', label: 'Melanoma of the skin', rs: { local: 0.99, regional: 0.74, distant: 0.35 } },
+  { id: 'pancreas', label: 'Pancreas', rs: { local: 0.44, regional: 0.16, distant: 0.03 } },
+  { id: 'other', label: 'Other or several types', rs: { local: 0.9, regional: 0.7, distant: 0.3 } },
+];
+const CANCER_STAGES = [
+  { id: 'local', label: 'Localized (confined to where it started)' },
+  { id: 'regional', label: 'Regional (spread to nearby lymph nodes or tissue)' },
+  { id: 'distant', label: 'Distant / metastatic (spread to distant organs)' },
+  { id: 'unknown', label: 'I don’t know the stage' },
+];
+
+function cancerExcess(v, { t, baseMu }) {
+  if (!v || !v.status) return 0;
+  // People with no current cancer diagnosis have slightly lower near-term mortality than the
+  // population, whose death rates include patients already diagnosed.
+  if (v.status === 'none') return t < 2 ? -0.08 * baseMu : t < 5 ? -0.04 * baseMu : 0;
+  if (v.status === 'past') return 0.1 * baseMu;
+  const type = CANCER_TYPES.find((c) => c.id === v.type) || CANCER_TYPES.at(-1);
+  const stage = ['local', 'regional', 'distant'].includes(v.stage) ? v.stage : 'regional';
+  const lambda = -Math.log(type.rs[stage]) / 5; // average annual excess hazard over 5 years
+  if (v.when === '1to5') return t < 3 ? 0.6 * lambda : 0.1 * baseMu;
+  return t < 2 ? 1.5 * lambda : t < 5 ? (2 / 3) * lambda : 0.1 * baseMu;
+}
+
+// Motor-vehicle deaths per person-year (NHTSA/CDC, about 13 per 100,000; higher for young and old).
+function motorVehicleBase(age) {
+  if (age < 25) return 0.00018;
+  if (age < 75) return 0.00013;
+  return 0.00018;
+}
+const DRIVING_RECORD = { nodrive: 0.6, clean: 0.9, v1: 1.4, v3: 2.0, dui: 2.5 };
+const SEATBELT = { always: 0.94, notalways: 1.7 };
+
+export const HAZARD_ITEMS = [
+  { id: 'skydive', label: 'Skydiving (25 or more jumps a year)', excess: 0.0002, cite: 'uspa' },
+  { id: 'scuba', label: 'Recreational scuba diving', excess: 0.00016, cite: 'denoble2008' },
+  { id: 'pilot', label: 'Flying as a private (non-commercial) pilot', excess: 0.0008, cite: 'aopa' },
+  { id: 'moto', label: 'Riding a motorcycle regularly', excess: 0.0005, cite: 'nhtsaMoto' },
+];
+
+const OCCUPATIONS = [
+  { id: 'low', label: 'Office, professional, retail, healthcare, education, retired or not working', excess: 0 },
+  { id: 'moderate', label: 'Construction trades, manufacturing, landscaping, police or firefighting', excess: 0.0001 },
+  { id: 'high', label: 'Truck or delivery driving, farming/ranching, roofing, power-line or ironwork', excess: 0.0003 },
+  { id: 'veryhigh', label: 'Logging, commercial fishing, or piloting small commercial aircraft', excess: 0.001 },
+];
+const AVG_OCC_EXCESS = 0.00003;
+
+FACTORS.push(
+  {
+    id: 'drugs',
+    section: 'habits',
+    label: 'Drug use',
+    question: 'Do you use opioids that were not prescribed to you, heroin, cocaine or methamphetamine?',
+    group: 'drugs',
+    attenuation: 0.2,
+    modifiable: true,
+    cite: ['larney2020'],
+    options: [
+      opt('no', 'No', 1.0, 0.985),
+      opt('past', 'Not in the last year, but I have in the past', 1.5, 0.008, {}),
+      opt('yes', 'Yes, in the last year', 5.0, 0.007, { improvesTo: 'past' }),
+    ],
+    advice: 'People who use non-prescribed opioids have roughly ten times the mortality of their peers, mostly from overdose (Larney 2020). Treatment with methadone or buprenorphine roughly halves that risk. Free, confidential help: SAMHSA National Helpline, 1-800-662-4357.',
+  },
+  {
+    id: 'hf',
+    section: 'history',
+    label: 'Heart failure',
+    question: 'Have you been diagnosed with heart failure?',
+    group: 'conditions',
+    attenuation: 0.3,
+    modifiable: false,
+    cite: ['jones2019'],
+    options: [
+      opt('no', 'No', 1.0, 0.975),
+      opt('mild', 'Yes, with few or no symptoms in daily life (NYHA class I–II)', 2.5, 0.018),
+      opt('severe', 'Yes, with symptoms on minimal exertion or at rest (NYHA class III–IV)', 5.0, 0.007),
+    ],
+  },
+  {
+    id: 'copd',
+    section: 'history',
+    label: 'COPD / chronic lung disease',
+    question: 'Have you been diagnosed with COPD, emphysema or chronic bronchitis?',
+    group: 'conditions',
+    attenuation: 0.3,
+    modifiable: false,
+    cite: ['mannino2003'],
+    options: [
+      opt('no', 'No', 1.0, 0.93),
+      opt('mild', 'Yes, mild (GOLD 1)', 1.3, 0.03),
+      opt('moderate', 'Yes, moderate (GOLD 2)', 1.6, 0.025),
+      opt('severe', 'Yes, severe (GOLD 3–4)', 2.7, 0.012),
+      opt('oxygen', 'Yes, and I use home oxygen', 4.0, 0.003),
+    ],
+  },
+  {
+    id: 'hiv',
+    section: 'history',
+    label: 'HIV',
+    question: 'Are you living with HIV?',
+    group: 'conditions',
+    attenuation: 0.2,
+    modifiable: true,
+    cite: ['marcus2020'],
+    options: [
+      opt('no', 'No', 1.0, 0.996),
+      opt('suppressed', 'Yes, on treatment with an undetectable viral load', 1.6, 0.003),
+      opt('unsuppressed', 'Yes, not on treatment or not suppressed', 3.5, 0.001, { improvesTo: 'suppressed' }),
+    ],
+    advice: 'With modern antiretroviral therapy started early, the life-expectancy gap for people with HIV has narrowed to a few years (Marcus 2020).',
+  },
+  {
+    id: 'cancer',
+    section: 'cancer',
+    kind: 'excess',
+    label: 'Cancer',
+    modifiable: false,
+    cite: ['seer'],
+    questions: [
+      { key: 'status', question: 'Have you ever been diagnosed with cancer? (Do not count basal-cell or squamous-cell skin cancer.)', options: [
+        { id: 'none', label: 'No' },
+        { id: 'past', label: 'Yes, more than 5 years ago, with no sign of cancer since' },
+        { id: 'recent', label: 'Yes, within the last 5 years, or I have active cancer' },
+      ] },
+      { key: 'when', question: 'When were you diagnosed?', showIf: (v) => v.status === 'recent', options: [
+        { id: 'lt1', label: 'Within the last year' },
+        { id: '1to5', label: '1 to 5 years ago' },
+      ] },
+      { key: 'type', question: 'What type of cancer?', showIf: (v) => v.status === 'recent', options: CANCER_TYPES.map((c) => ({ id: c.id, label: c.label })) },
+      { key: 'stage', question: 'What was the stage at diagnosis?', showIf: (v) => v.status === 'recent', options: CANCER_STAGES },
+    ],
+    resolve(a) { return a.cancer && a.cancer.status ? a.cancer : null; },
+    excessAt: cancerExcess,
+    describe(v) {
+      if (v.status === 'none') return 'No cancer diagnosis';
+      if (v.status === 'past') return 'Cancer more than 5 years ago, no recurrence';
+      const type = (CANCER_TYPES.find((c) => c.id === v.type) || { label: 'Type not given' }).label;
+      const stage = (CANCER_STAGES.find((c) => c.id === v.stage) || { label: 'stage unknown' }).label.split(' (')[0].toLowerCase();
+      return `${type} cancer, ${stage}, diagnosed ${v.when === '1to5' ? '1–5 years ago' : 'within the last year'}`;
+    },
+  },
+  {
+    id: 'genetic',
+    section: 'family',
+    label: 'Inherited conditions',
+    question: 'Has genetic testing or a doctor identified any of these inherited conditions in you?',
+    group: 'genetic',
+    attenuation: 0.2,
+    modifiable: true,
+    cite: ['finch2014', 'versmissen2008'],
+    options: [
+      opt('none', 'None known, or never tested', 1.0, 0.985),
+      opt('brcaManaged', 'BRCA1/2 or Lynch syndrome, with risk-reducing surgery or recommended screening', 1.1, 0.003),
+      opt('brca', 'BRCA1/2 or Lynch syndrome, without risk-reducing surgery or screening', 1.4, 0.002, { improvesTo: 'brcaManaged' }),
+      opt('fhTreated', 'Familial hypercholesterolemia, on cholesterol-lowering treatment', 1.1, 0.005),
+      opt('fh', 'Familial hypercholesterolemia, untreated', 1.6, 0.005, { improvesTo: 'fhTreated' }),
+    ],
+    advice: 'For BRCA carriers, preventive oophorectomy was associated with a 77% reduction in all-cause mortality (Finch 2014). In familial hypercholesterolemia, statin treatment brought heart-disease risk close to the general population’s (Versmissen 2008).',
+  },
+  {
+    id: 'occupation',
+    section: 'exposures',
+    kind: 'excess',
+    label: 'Occupational hazard',
+    modifiable: false,
+    cite: ['bls'],
+    questions: [{ key: 'job', question: 'Which best describes your main job?', options: OCCUPATIONS.map(({ id, label }) => ({ id, label })) }],
+    resolve(a) { return a.occupation && a.occupation.job ? a.occupation : null; },
+    excessAt(v, { age }) {
+      if (age >= 67) return 0;
+      const o = OCCUPATIONS.find((x) => x.id === v.job);
+      return o ? o.excess - AVG_OCC_EXCESS : 0;
+    },
+    describe(v) { const o = OCCUPATIONS.find((x) => x.id === v.job); return o ? o.label : ''; },
+  },
+  {
+    id: 'hazards',
+    section: 'exposures',
+    kind: 'excess',
+    label: 'Hazardous activities',
+    modifiable: true,
+    cite: ['uspa', 'denoble2008', 'aopa', 'nhtsaMoto'],
+    questions: [{ key: 'items', type: 'checklist', question: 'Do you regularly do any of these? Tick all that apply.', options: HAZARD_ITEMS.map(({ id, label }) => ({ id, label })) }],
+    resolve(a) { return a.hazards && a.hazards.answered ? a.hazards : null; },
+    excessAt(v, { age }) {
+      if (age >= 80) return 0;
+      return HAZARD_ITEMS.reduce((s, h) => s + (v.items && v.items[h.id] ? h.excess : 0), 0);
+    },
+    describe(v) {
+      const on = HAZARD_ITEMS.filter((h) => v.items && v.items[h.id]).map((h) => h.label.split(' (')[0]);
+      return on.length ? on.join(', ') : 'None';
+    },
+    improve(v) { return HAZARD_ITEMS.some((h) => v.items && v.items[h.id]) ? { answered: true, items: {} } : null; },
+    targetLabel: 'Stop, or reduce how often',
+    advice: 'Each activity adds an accident risk that is independent of health. Annual fatality risks used: skydiving about 1 in 5,000 at 50 jumps a year (USPA); scuba about 1 in 6,000 divers (Denoble 2008); private flying about 1 in 1,250 at 80 hours a year (AOPA); motorcycling about 1 in 2,000 riders (NHTSA).',
+  },
+  {
+    id: 'driving',
+    section: 'exposures',
+    kind: 'excess',
+    label: 'Driving record and seat belt use',
+    modifiable: true,
+    cite: ['nhtsaOverview', 'gebers2003'],
+    questions: [
+      { key: 'record', question: 'Which best describes your driving record over the last 5 years?', options: [
+        { id: 'nodrive', label: 'I don’t drive' },
+        { id: 'clean', label: 'No moving violations or at-fault crashes' },
+        { id: 'v1', label: '1 or 2 moving violations or an at-fault crash' },
+        { id: 'v3', label: '3 or more violations, or a license suspension' },
+        { id: 'dui', label: 'A DUI/DWI conviction' },
+      ] },
+      { key: 'belt', question: 'Do you always wear a seat belt, including as a passenger and on short trips?', options: [
+        { id: 'always', label: 'Always' },
+        { id: 'notalways', label: 'Not always' },
+      ] },
+    ],
+    resolve(a) { return a.driving && (a.driving.record || a.driving.belt) ? a.driving : null; },
+    excessAt(v, { age }) {
+      const m = (DRIVING_RECORD[v.record] ?? 1) * (SEATBELT[v.belt] ?? 1);
+      return motorVehicleBase(age) * (m - 1);
+    },
+    describe(v) {
+      const r = { nodrive: 'Does not drive', clean: 'Clean record', v1: '1–2 violations', v3: '3+ violations or suspension', dui: 'DUI/DWI conviction' }[v.record] || 'Record not given';
+      const b = { always: 'always belted', notalways: 'not always belted' }[v.belt] || 'belt use not given';
+      return `${r}, ${b}`;
+    },
+    improve(v) {
+      const better = { ...v };
+      if (['v1', 'v3', 'dui'].includes(v.record)) better.record = 'clean';
+      if (v.belt === 'notalways') better.belt = 'always';
+      return better.record !== v.record || better.belt !== v.belt ? better : null;
+    },
+    targetLabel: 'Always belted, no violations or impaired driving',
+    advice: 'Seat belts cut the risk of death in a crash by about 45% (NHTSA). Drivers with multiple convictions or a DUI have markedly higher future crash rates (Gebers & Peck 2003).',
+  },
+  {
+    id: 'income',
+    section: 'life',
+    label: 'Household income',
+    question: 'What is your total household income before taxes?',
+    group: 'ses',
+    attenuation: 0.3,
+    modifiable: false,
+    cite: ['chetty2016', 'lantz1998'],
+    // Hazard ratios by household-income quintile, attenuated for health behaviors (Lantz 1998)
+    // and consistent with the 10-15 year life-expectancy gradient in Chetty 2016.
+    options: [
+      opt('q1', 'Under $35,000', 1.5, 0.2),
+      opt('q2', '$35,000 to $65,000', 1.2, 0.2),
+      opt('q3', '$65,000 to $100,000', 1.0, 0.2),
+      opt('q4', '$100,000 to $165,000', 0.9, 0.2),
+      opt('q5', 'Over $165,000', 0.8, 0.2),
+    ],
+  },
+  {
+    id: 'education',
+    section: 'life',
+    label: 'Education',
+    question: 'What is the highest level of education you have completed?',
+    group: 'ses',
+    attenuation: 0.3,
+    modifiable: false,
+    cite: ['krueger2015'],
+    options: [
+      opt('lths', 'Less than high school', 1.45, 0.1),
+      opt('hs', 'High school diploma or GED', 1.3, 0.27),
+      opt('some', 'Some college or associate degree', 1.15, 0.26),
+      opt('ba', 'Bachelor’s degree or higher', 1.0, 0.37),
+    ],
+  },
+  {
+    id: 'marital',
+    section: 'life',
+    label: 'Marital status',
+    question: 'What is your marital status?',
+    group: 'psychosocial',
+    attenuation: 0.2,
+    modifiable: false,
+    cite: ['roelfs2011', 'shor2012'],
+    options: [
+      opt('married', 'Married or living with a partner', 1.0, 0.53),
+      opt('never', 'Never married', 1.24, 0.3),
+      opt('divorced', 'Divorced or separated', 1.3, 0.11),
+      opt('widowed', 'Widowed', 1.15, 0.06),
+    ],
+  },
+  {
+    id: 'selfRated',
+    section: 'wellbeing',
+    label: 'Self-rated health',
+    question: 'In general, how would you rate your health?',
+    group: 'conditions',
+    attenuation: 0.2,
+    modifiable: false,
+    cite: ['desalvo2006'],
+    options: [
+      opt('excellent', 'Excellent', 1.0, 0.2),
+      opt('vgood', 'Very good', 1.1, 0.32),
+      opt('good', 'Good', 1.23, 0.3),
+      opt('fair', 'Fair', 1.44, 0.13),
+      opt('poor', 'Poor', 1.92, 0.05),
+    ],
+  },
+);
 
 export const FACTOR_BY_ID = Object.fromEntries(FACTORS.map((f) => [f.id, f]));
 

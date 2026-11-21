@@ -78,6 +78,39 @@ function selectQuestion(f, opts = {}) {
 
 const F = Object.fromEntries(FACTORS.map((f) => [f.id, f]));
 
+const SECTION_NOTES = {
+  history: '<p class="note"><strong>Not modeled:</strong> liver cirrhosis, organ transplant, dementia and other serious conditions whose prognosis depends heavily on specifics. If any apply to you, treat this report as optimistic and ask your clinician about prognosis.</p>',
+  cancer: '<p class="note">Cancer is modeled as extra (additive) risk that is highest in the first years after diagnosis and fades after five years, using SEER 5-year relative survival for the type and stage you choose. Survival also depends on grade, molecular subtype and treatment, so your oncologist\u2019s estimate should take precedence.</p>',
+  wellbeing: '<p class="note">If you are having thoughts of harming yourself, please reach out now. In the U.S., call or text <strong>988</strong> (Suicide &amp; Crisis Lifeline) any time.</p>',
+  exposures: '<p class="note">Occupation, activities and driving are modeled as an added annual accident risk, as insurers do with flat extra premiums, rather than as a multiple of health-related mortality.</p>',
+};
+
+// Multi-part questions for factors that store an object (cancer, driving, occupation, activities).
+function excessQuestion(f) {
+  const v = state.answers[f.id] || {};
+  return f.questions.map((q, i) => {
+    if (q.showIf && !q.showIf(v)) return '';
+    const last = i === f.questions.length - 1 || f.questions.slice(i + 1).every((n) => n.showIf && !n.showIf(v));
+    const cite = last ? citeLine(f.cite) : '';
+    if (q.type === 'checklist') {
+      return `<fieldset class="q" data-factor="${f.id}">
+        <legend>${escapeHtml(q.question)}</legend>
+        ${q.options.map((o) => `<label class="check"><input type="checkbox" data-ex="${f.id}" data-key="${q.key}" value="${o.id}" ${v.answered && v[q.key]?.[o.id] ? 'checked' : ''}><span>${escapeHtml(o.label)}</span></label>`).join('')}
+        <label class="check"><input type="checkbox" data-ex="${f.id}" data-key="${q.key}" value="__none" ${v.answered && !q.options.some((o) => v[q.key]?.[o.id]) ? 'checked' : ''}><span>None of these</span></label>
+        ${cite}
+      </fieldset>`;
+    }
+    return `<fieldset class="q" data-factor="${f.id}">
+      <legend>${escapeHtml(q.question)}</legend>
+      <div class="options">
+        ${q.options.map((o) => `<label class="opt"><input type="radio" name="${f.id}.${q.key}" data-ex="${f.id}" data-key="${q.key}" value="${o.id}" ${v[q.key] === o.id ? 'checked' : ''}><span>${escapeHtml(o.label)}</span></label>`).join('')}
+        ${i === 0 ? `<label class="opt unknown"><input type="radio" name="${f.id}.${q.key}" data-ex="${f.id}" data-key="${q.key}" value="" ${!v[q.key] ? 'checked' : ''}><span>Prefer not to say</span></label>` : ''}
+      </div>
+      ${cite}
+    </fieldset>`;
+  }).join('');
+}
+
 function sectionHtml(sec) {
   const a = state.answers;
   let body = '';
@@ -129,9 +162,6 @@ function sectionHtml(sec) {
       </div>`;
       break;
     }
-    case 'habits':
-      body = selectQuestion(F.smoking) + selectQuestion(F.alcohol);
-      break;
     case 'activity':
       body = `
       <div class="q">
@@ -157,18 +187,11 @@ function sectionHtml(sec) {
       </fieldset>
       ${selectQuestion(F.sleep)}`;
       break;
-    case 'clinical':
-      body = selectQuestion(F.bp) + selectQuestion(F.diabetes) + selectQuestion(F.cholesterol);
-      break;
-    case 'history':
-      body = selectQuestion(F.chd) + selectQuestion(F.stroke) + selectQuestion(F.afib) + selectQuestion(F.ckd) + selectQuestion(F.family, { unknownLabel: 'I don’t know (e.g. adopted)' })
-        + `<p class="note"><strong>Not modeled:</strong> active or recent cancer, heart failure, COPD, HIV, and other serious conditions. Their effect on survival depends heavily on type, stage and treatment, so a population-average adjustment would mislead. If any apply to you, treat this report as optimistic and ask your clinician about prognosis.</p>`;
-      break;
-    case 'wellbeing':
-      body = selectQuestion(F.social) + selectQuestion(F.depression)
-        + `<p class="note">If you are having thoughts of harming yourself, please reach out now. In the U.S., call or text <strong>988</strong> (Suicide &amp; Crisis Lifeline) any time.</p>`;
-      break;
-    default:
+    default: {
+      const order = { income: 1, education: 2, marital: 3, social: 4 };
+      const fs = FACTORS.filter((f) => f.section === sec.id && !f.derived).sort((x, y) => (order[x.id] || 0) - (order[y.id] || 0));
+      body = fs.map((f) => (f.kind === 'excess' ? excessQuestion(f) : selectQuestion(f, f.id === 'family' ? { unknownLabel: 'I don\u2019t know (e.g. adopted)' } : {}))).join('') + (SECTION_NOTES[sec.id] || '');
+    }
   }
   return `<div class="card"><div class="section-head"><p class="eyebrow">Step ${SECTIONS.indexOf(sec) + 1} of ${SECTIONS.length}</p><h2>${sec.title}</h2><p>${sec.blurb}</p></div>${body}</div>`;
 }
@@ -197,6 +220,7 @@ function countAnswered() {
     if (f.id === 'bmi') { if (computeBMI(a.body) != null) done++; continue; }
     if (f.id === 'activity') { if (metHours(a.activity) != null) done++; continue; }
     if (f.id === 'diet') { if (a.diet.answered) done++; continue; }
+    if (f.kind === 'excess') { if (f.resolve(a) != null) done++; continue; }
     if (a[f.id]) done++;
   }
   return { done, total };
@@ -232,6 +256,25 @@ function renderForm() {
 
 function onFormInput(ev) {
   const t = ev.target;
+  if (t.dataset.ex) {
+    if (ev.type !== 'change') return;
+    const f = F[t.dataset.ex];
+    const v = { ...(state.answers[f.id] || {}) };
+    const q = f.questions.find((x) => x.key === t.dataset.key);
+    if (q.type === 'checklist') {
+      v.answered = true;
+      v[q.key] = { ...(v[q.key] || {}) };
+      if (t.value === '__none') { if (t.checked) v[q.key] = {}; } else v[q.key][t.value] = t.checked;
+    } else {
+      v[q.key] = t.value;
+    }
+    state.answers[f.id] = v;
+    save();
+    const y = window.scrollY;
+    renderForm();
+    window.scrollTo({ top: y });
+    return;
+  }
   if (t.dataset.path) {
     setPath(t.dataset.path, t.value);
   } else if (t.name === 'improvement') {
@@ -383,7 +426,7 @@ function survQ(r, p) {
 /* ---------- Methodology ---------- */
 
 function renderMethod() {
-  const factorRows = FACTORS.map((f) => `<tr><td><strong>${f.label}</strong><br><span class="small">${f.options.map((o) => `${escapeHtml(o.label)}: HR ${o.rr}`).join('; ')}</span></td><td>${f.cite.map(citeShort).join('; ')}</td></tr>`).join('');
+  const factorRows = FACTORS.map((f) => `<tr><td><strong>${f.label}</strong><br><span class="small">${f.kind === 'excess' ? 'Modeled as added annual risk (see section 3).' : f.options.map((o) => `${escapeHtml(o.label)}: HR ${o.rr}`).join('; ')}</span></td><td>${f.cite.map(citeShort).join('; ')}</td></tr>`).join('');
   $('#method').innerHTML = `<div class="panel method">
     <p class="eyebrow">Methodology</p>
     <h1>How MyActuary builds your life table</h1>
@@ -398,6 +441,7 @@ function renderMethod() {
       <li><strong>Age attenuation.</strong> Relative risks narrow at older ages, so each factor's log-HR is reduced linearly between ages 60 and 90 (by 0% to 50% depending on the factor; BMI and blood pressure attenuate most, consistent with the cited pooled analyses).</li>
       <li><strong>Overlap.</strong> Factors that act through shared pathways (BMI, blood pressure, blood sugar, cholesterol, activity and diet) are combined with diminishing weights (1, 0.8, 0.64 … floored at 0.5) rather than simply multiplied, to avoid double counting.</li>
       <li><strong>Bounds.</strong> The combined multiplier saturates smoothly between 0.35× and 10× population mortality.</li>
+      <li><strong>Added (excess) risk.</strong> Cancer, occupation, hazardous activities and driving are added to the hazard rather than multiplied, because their risk does not scale with age-related mortality. Cancer uses SEER 5-year relative survival by type and stage, front-loaded in the first two years and fading to a small residual after five. Occupation uses BLS fatal-injury rates until age 67. Activities use published fatality rates per participant. Driving scales the U.S. motor-vehicle death rate by your record and seat-belt use.</li>
       <li><strong>Smoking cessation.</strong> Former smokers' excess risk declines with time since quitting, following Jha et al. (2013). The "quit now" scenario uses the same trajectory.</li>
     </ul>
     <h3>4. Outputs</h3>
@@ -405,8 +449,9 @@ function renderMethod() {
     <h3>5. Limitations</h3>
     <ul>
       <li>Hazard ratios come from observational studies (except blood pressure and cholesterol treatment) and may include residual confounding.</li>
-      <li>Income, education, occupation, geography, race and ethnicity also predict U.S. mortality but are not modeled.</li>
-      <li>Cancer, heart failure, COPD and many other serious conditions are not modeled.</li>
+      <li>Geography, race and ethnicity also predict U.S. mortality but are not modeled; U.S. insurers may not use race, and state-level data is not yet included.</li>
+      <li>Liver cirrhosis, dementia, transplant and other serious conditions are not modeled. Cancer survival is approximated by type and stage only.</li>
+      <li>Income and education effects are partly explained by health behaviors and access to care; the hazard ratios used are attenuated for behaviors, and they overlap with each other, so they are combined with diminishing weights.</li>
       <li>Population prevalence figures are approximate.</li>
     </ul>
     <h3>Relative risks used</h3>
