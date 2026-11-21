@@ -198,7 +198,7 @@ table.lt tr.now td { font-weight: 700; }
 
 @media (max-width: 880px) {
   .form-layout { grid-template-columns: 1fr; gap: 16px; }
-  .stepper { position: static; }
+  .stepper { position: static; min-width: 0; max-width: 100%; }
   .stepper ol { display: flex; overflow-x: auto; gap: 4px; padding-bottom: 4px; }
   .stepper li button { white-space: nowrap; }
   .stepper li button .label { display: none; }
@@ -233,3 +233,15 @@ table.lt tr.now td { font-weight: 700; }
 .dbar-val { text-align: right; font-size: .88rem; font-variant-numeric: tabular-nums; }
 @media (max-width: 520px) { .dbar-row { grid-template-columns: 1fr 64px; } .dbar-track { grid-column: 1 / -1; grid-row: 2; } }
 .field select.wide-select { width: 320px; max-width: 100%; }
+
+/* Medical history checklist and family-history editor */
+.cond-group { margin: 10px 0 6px; }
+.cond-title { margin: 0 0 2px; font-weight: 600; font-size: .9rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.fh-rows { display: grid; gap: 8px; margin: 8px 0; }
+.fh-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr) minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.fh-row select { font: inherit; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); min-height: 44px; width: 100%; min-width: 0; }
+.fh-actions { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; margin: 6px 0; }
+@media (max-width: 640px) {
+  .fh-row { grid-template-columns: 1fr 1fr; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+  .fh-row select[data-fh-key="cond"] { grid-column: 1 / -1; grid-row: 1; }
+}

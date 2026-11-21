@@ -3,7 +3,7 @@ import { SSA_2023 } from './data/ssa-2023.js';
 import { FACTORS } from './factors.js';
 
 export const MAX_AGE = 120;
-export const MODEL_VERSION = '1.2.0';
+export const MODEL_VERSION = '1.3.0';
 export const DEFAULT_IMPROVEMENT = 0.007; // long-range average annual decline in death rates (SSA Trustees, intermediate)
 const OVERLAP_DECAY = 0.8; // weight multiplier for each additional factor in the same pathway group
 const OVERLAP_FLOOR = 0.5;
@@ -23,8 +23,10 @@ export function baseQ(sex, age) {
 }
 
 const isExcess = (f) => f.kind === 'excess';
-const RR_FACTORS = FACTORS.filter((f) => !isExcess(f));
-const EXCESS_FACTORS = FACTORS.filter(isExcess);
+const isCustom = (f) => f.kind === 'custom';
+const RR_FACTORS = FACTORS.filter((f) => !isExcess(f) && !isCustom(f));
+const EXCESS_FACTORS = FACTORS.filter((f) => isExcess(f) || (isCustom(f) && f.excessAt));
+const CUSTOM_FACTORS = FACTORS.filter(isCustom);
 
 const meanRRCache = new Map();
 function meanRR(factor) {
@@ -96,25 +98,30 @@ function combine(logsByGroup) {
   return total;
 }
 
-export function multiplierAt(resolved, age, t, scale = 1) {
+export function multiplierAt(resolved, age, t, scale = 1, sex = 'unspecified') {
   const groups = new Map();
+  const push = (g, l) => { if (!groups.has(g)) groups.set(g, []); groups.get(g).push(l); };
   for (const f of RR_FACTORS) {
     const l = factorLog(f, resolved[f.id], age, t) * scale;
-    if (l === 0) continue;
-    if (!groups.has(f.group)) groups.set(f.group, []);
-    groups.get(f.group).push(l);
+    if (l !== 0) push(f.group, l);
+  }
+  // Custom factors (condition checklist, family history) return a list of log hazards.
+  for (const f of CUSTOM_FACTORS) {
+    const v = resolved[f.id];
+    if (v == null) continue;
+    for (const l of f.logsAt(v, { age, t, sex })) if (l !== 0) push(f.group, l * scale);
   }
   return softBound(combine(groups));
 }
 
 // Additive (excess) annual hazard from accident exposures and cancer, which do not scale
 // with background mortality the way chronic risk factors do.
-export function excessAt(resolved, age, t, baseMu, scale = 1) {
+export function excessAt(resolved, age, t, baseMu, scale = 1, sex = 'unspecified') {
   let x = 0;
   for (const f of EXCESS_FACTORS) {
     const v = resolved[f.id];
     if (v == null) continue;
-    x += f.excessAt(v, { age, t, baseMu }) * scale;
+    x += f.excessAt(v, { age, t, baseMu, sex }) * scale;
   }
   return x;
 }
@@ -144,9 +151,9 @@ export function buildTable(resolved, opts) {
     const year = year0 + t;
     const impFactor = Math.pow(1 - imp, Math.max(0, year - SSA_2023.baseYear));
     const qb = Math.min(1, baseQ(sex, x) * impFactor);
-    const m = multiplierAt(resolved, x, t, scale);
+    const m = multiplierAt(resolved, x, t, scale, sex);
     const mu = -Math.log(1 - Math.min(qb, 0.999999));
-    const ex = excessAt(resolved, x, t, mu, scale);
+    const ex = excessAt(resolved, x, t, mu, scale, sex);
     const hazard = Math.max(mu * m * 0.25, mu * m + ex);
     const q = x >= MAX_AGE ? 1 : 1 - Math.exp(-hazard);
     const qbase = x >= MAX_AGE ? 1 : qb;
@@ -239,8 +246,9 @@ export function evaluate(answers, { currentYear } = {}) {
     let rr = null;
     let relative = null;
     let improved = null;
-    if (isExcess(f)) {
-      answer = f.describe(val);
+    if (isExcess(f) || isCustom(f)) {
+      answer = f.describe(val, sex);
+      if (isCustom(f)) relative = Math.exp(f.logsAt(val, { age, t: 0, sex }).reduce((a, b) => a + b, 0));
       if (f.modifiable && f.improve) {
         improved = f.improve(val);
         if (improved) target = f.targetLabel;
@@ -265,7 +273,7 @@ export function evaluate(answers, { currentYear } = {}) {
       answer,
       rr,
       relative,
-      excess: isExcess(f),
+      excess: isExcess(f) || (isCustom(f) && relative == null),
       vsAverage: e - eWithout,
       modifiable: !!f.modifiable,
       gain,

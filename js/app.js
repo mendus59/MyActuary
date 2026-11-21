@@ -4,6 +4,7 @@ import { evaluate, DEFAULT_IMPROVEMENT, MODEL_VERSION } from './engine.js';
 import { lineChart, divergingBars } from './charts.js';
 import { exportPdf, importFile } from './pdf.js';
 import { fmt, citeShort, escapeHtml } from './format.js';
+import { CONDITIONS, CONDITION_SYSTEMS, RELATIVES, FAMILY_CONDITIONS, AGE_BANDS, familyHistoryFactor } from './medical.js';
 
 const STORAGE_KEY = 'myactuary.session.v1';
 const $ = (s, root = document) => root.querySelector(s);
@@ -90,7 +91,7 @@ function selectQuestion(f, opts = {}) {
 const F = Object.fromEntries(FACTORS.map((f) => [f.id, f]));
 
 const SECTION_NOTES = {
-  history: '<p class="note"><strong>Not modeled:</strong> organ transplant and some rarer serious conditions whose prognosis depends heavily on specifics. If any apply to you, treat this report as optimistic and ask your clinician about prognosis.</p>',
+  history: '<p class="note"><strong>Not modeled:</strong> transplants other than kidney, and rarer serious conditions (for example ALS, sickle cell disease, pulmonary hypertension) whose prognosis depends heavily on specifics. If any apply to you, treat this report as optimistic and ask your clinician about prognosis.</p>',
   cancer: '<p class="note">Cancer is modeled as extra (additive) risk that is highest in the first years after diagnosis and fades after five years, using SEER 5-year relative survival for the type and stage you choose. Survival also depends on grade, molecular subtype and treatment, so your oncologist\u2019s estimate should take precedence.</p>',
   wellbeing: '<p class="note">If you are having thoughts of harming yourself, please reach out now. In the U.S., call or text <strong>988</strong> (Suicide &amp; Crisis Lifeline) any time.</p>',
   exposures: '<p class="note">Occupation, activities and driving are modeled as an added annual accident risk, as insurers do with flat extra premiums, rather than as a multiple of health-related mortality.</p>',
@@ -120,6 +121,64 @@ function excessQuestion(f) {
       ${cite}
     </fieldset>`;
   }).join('');
+}
+
+// Organ-system checklist of other diagnosed conditions.
+function conditionsQuestion(f) {
+  const v = state.answers.conditions || {};
+  const on = (id) => v.answered && v.items?.[id];
+  const any = CONDITIONS.some((c) => on(c.id));
+  return `<fieldset class="q" data-factor="conditions">
+    <legend>Has a doctor ever diagnosed you with any of these?</legend>
+    <p class="q-help">Heart, lung, liver, kidney, diabetes, cancer and dementia questions are asked separately. Tick everything that applies.</p>
+    ${CONDITION_SYSTEMS.map((sys) => {
+    const items = CONDITIONS.filter((c) => c.system === sys.id);
+    if (!items.length) return '';
+    return `<div class="cond-group"><p class="cond-title">${escapeHtml(sys.title)}</p>
+      ${items.map((c) => `<label class="check"><input type="checkbox" data-cond="${c.id}" ${on(c.id) ? 'checked' : ''}><span>${escapeHtml(c.label)} <span class="small">(${c.hr ? `HR ${c.hr}` : `about ${Math.round(c.excess * 100)}% added risk a year`}; ${escapeHtml(citeShort(c.cite))})</span></span></label>`).join('')}</div>`;
+  }).join('')}
+    <label class="check"><input type="checkbox" data-cond="__none" ${v.answered && !any ? 'checked' : ''}><span><strong>None of these</strong></span></label>
+  </fieldset>`;
+}
+
+function familyEffectText() {
+  const a = state.answers;
+  const v = a.familyHx;
+  if (!v?.answered) return 'Not answered yet. The model assumes a typical family history.';
+  const age = Number(a.person.age) || 45;
+  const sex = a.person.sex || 'unspecified';
+  const [l] = familyHistoryFactor.logsAt(v, { age, sex });
+  const pct = Math.round((Math.exp(l) - 1) * 100);
+  const n = (v.entries || []).filter((e) => e.rel && e.cond).length;
+  const what = n ? `${n} famil${n === 1 ? 'y entry' : 'y entries'}` : 'No significant family history';
+  return `${what}: estimated effect on your current death rate <strong>${pct > 0 ? '+' : ''}${pct}%</strong> compared with a typical family. Conditions that can’t affect your sex are ignored.`;
+}
+
+// Family history editor: one row per affected relative and condition.
+function familyHxQuestion(f) {
+  const v = state.answers.familyHx || {};
+  const entries = v.entries || [];
+  const sel = (i, key, list, cur, ph) => `<select data-fh="${i}" data-fh-key="${key}" aria-label="${ph}"><option value="">${ph}</option>${list.map((o) => `<option value="${o.id}" ${cur === o.id ? 'selected' : ''}>${escapeHtml(o.label)}</option>`).join('')}</select>`;
+  const rows = entries.map((e, i) => `<div class="fh-row">
+      ${sel(i, 'rel', RELATIVES, e.rel, 'Relative')}
+      ${sel(i, 'cond', FAMILY_CONDITIONS, e.cond, 'Condition')}
+      ${sel(i, 'age', AGE_BANDS, e.age, 'Age at diagnosis')}
+      <button type="button" class="btn btn-ghost" data-fh-remove="${i}" aria-label="Remove this entry">Remove</button>
+    </div>`).join('');
+  return `<fieldset class="q" data-factor="familyHx">
+    <legend>Which blood relatives have had these conditions?</legend>
+    <p class="q-help">Add one row for each relative and condition, for example “Father, prostate cancer, 60–69” or “Grandparent, another cancer”. Only blood relatives count. Conditions you don’t list are assumed to be as common as in the average family, unless you tick “This list is complete”. If two relatives had the same condition, add a row for each, since more relatives and earlier diagnoses raise the risk.</p>
+    <div class="fh-rows">${rows}</div>
+    <div class="fh-actions">
+      <button type="button" class="btn" data-fh-add>+ Add a relative</button>
+      ${entries.length
+    ? `<label class="check"><input type="checkbox" data-fh-complete ${v.complete ? 'checked' : ''}><span>This list is complete: none of my other close relatives had these conditions</span></label>`
+    : `<label class="check"><input type="checkbox" data-fh-none ${v.answered ? 'checked' : ''}><span>No significant family history of these conditions</span></label>`}
+    </div>
+    <p class="computed" id="fh-out">${familyEffectText()}</p>
+    <p class="small">How this is calculated: each condition’s relative risk for an affected parent, sibling or child comes from the cited meta-analyses. Grandparents, aunts and uncles carry half the excess, and an early diagnosis or two or more close relatives raise it. The disease’s share of deaths at your age turns that into an all-cause effect. <button type="button" class="btn-link" data-open-method style="padding:0">See the methodology</button>.</p>
+    ${citeLine(f.cite)}
+  </fieldset>`;
 }
 
 function sectionHtml(sec) {
@@ -201,7 +260,8 @@ function sectionHtml(sec) {
     default: {
       const order = { state: 1, race: 2, income: 3, education: 4, marital: 5, social: 6 };
       const fs = FACTORS.filter((f) => f.section === sec.id && !f.derived).sort((x, y) => (order[x.id] || 0) - (order[y.id] || 0));
-      body = fs.map((f) => (f.kind === 'excess' ? excessQuestion(f) : selectQuestion(f, f.id === 'family' ? { unknownLabel: 'I don\u2019t know (e.g. adopted)' } : {}))).join('') + (SECTION_NOTES[sec.id] || '');
+      const custom = { conditions: conditionsQuestion, familyHx: familyHxQuestion };
+      body = fs.map((f) => (custom[f.id] ? custom[f.id](f) : f.kind === 'excess' ? excessQuestion(f) : selectQuestion(f, f.id === 'family' ? { unknownLabel: 'I don\u2019t know (e.g. adopted)' } : {}))).join('') + (SECTION_NOTES[sec.id] || '');
     }
   }
   return `<div class="card"><div class="section-head"><p class="eyebrow">Step ${SECTIONS.indexOf(sec) + 1} of ${SECTIONS.length}</p><h2>${sec.title}</h2><p>${sec.blurb}</p></div>${body}</div>`;
@@ -216,6 +276,8 @@ function setPath(path, value) {
 function renderStepper() {
   const list = $('#stepper-list');
   list.innerHTML = SECTIONS.map((s, i) => `<li class="${i === step ? 'active' : ''} ${i < step ? 'done' : ''}"><button type="button" data-step="${i}"><span class="num">${i + 1}</span><span class="label">${s.title}</span></button></li>`).join('');
+  const act = list.querySelector('li.active');
+  if (act && list.scrollWidth > list.clientWidth) list.scrollLeft = act.offsetLeft - (list.clientWidth - act.offsetWidth) / 2;
   const answered = countAnswered();
   $('#progress-bar').style.width = `${Math.round((answered.done / answered.total) * 100)}%`;
   $('#progress-text').textContent = `${answered.done} of ${answered.total} questions answered`;
@@ -231,7 +293,7 @@ function countAnswered() {
     if (f.id === 'bmi') { if (computeBMI(a.body) != null) done++; continue; }
     if (f.id === 'activity') { if (metHours(a.activity) != null) done++; continue; }
     if (f.id === 'diet') { if (a.diet.answered) done++; continue; }
-    if (f.kind === 'excess') { if (f.resolve(a) != null) done++; continue; }
+    if (f.kind === 'excess' || f.kind === 'custom') { if (f.resolve(a) != null) done++; continue; }
     if (a[f.id]) done++;
   }
   return { done, total };
@@ -265,8 +327,48 @@ function renderForm() {
   $('#next').textContent = step === SECTIONS.length - 1 ? 'Generate my report' : 'Next';
 }
 
+function rerenderKeepScroll() {
+  save();
+  const y = window.scrollY;
+  renderForm();
+  window.scrollTo({ top: y });
+}
+
 function onFormInput(ev) {
   const t = ev.target;
+  if (t.dataset.cond) {
+    if (ev.type !== 'change') return;
+    const v = { answered: true, items: { ...(state.answers.conditions?.items || {}) } };
+    if (t.dataset.cond === '__none') { if (t.checked) v.items = {}; } else v.items[t.dataset.cond] = t.checked;
+    state.answers.conditions = v;
+    rerenderKeepScroll();
+    return;
+  }
+  if (t.dataset.fh != null) {
+    if (ev.type !== 'change') return;
+    const v = state.answers.familyHx || { answered: true, entries: [] };
+    const e = v.entries[Number(t.dataset.fh)];
+    if (e) e[t.dataset.fhKey] = t.value;
+    v.answered = true;
+    state.answers.familyHx = v;
+    save();
+    $('#fh-out').innerHTML = familyEffectText();
+    renderStepper();
+    return;
+  }
+  if (t.dataset.fhComplete != null) {
+    if (ev.type !== 'change') return;
+    state.answers.familyHx.complete = t.checked;
+    save();
+    $('#fh-out').innerHTML = familyEffectText();
+    return;
+  }
+  if (t.dataset.fhNone != null) {
+    if (ev.type !== 'change') return;
+    state.answers.familyHx = { answered: t.checked, entries: [] };
+    rerenderKeepScroll();
+    return;
+  }
   if (t.dataset.ex) {
     if (ev.type !== 'change') return;
     const f = F[t.dataset.ex];
@@ -437,7 +539,11 @@ function survQ(r, p) {
 /* ---------- Methodology ---------- */
 
 function renderMethod() {
-  const factorRows = FACTORS.map((f) => `<tr><td><strong>${f.label}</strong><br><span class="small">${f.kind === 'excess' ? 'Modeled as added annual risk (see section 3).' : f.options.map((o) => `${escapeHtml(o.label)}: HR ${o.anchors ? o.anchors.map(([a, h]) => `${h.toFixed(2)} at ${a}`).join(', ') : o.rr}`).join('; ')}</span></td><td>${f.cite.map(citeShort).join('; ')}</td></tr>`).join('');
+  const customDetail = {
+    conditions: () => CONDITIONS.map((c) => `${escapeHtml(c.label)}: ${c.hr ? `HR ${c.hr}` : `+${c.excess} a year`}`).join('; '),
+    familyHx: () => FAMILY_CONDITIONS.map((c) => `${escapeHtml(c.label)}: RR ${c.rr}${c.earlyRR ? ` (early onset ${c.earlyRR})` : ''}`).join('; ') + '. Converted to all-cause risk as described in section 3.',
+  };
+  const factorRows = FACTORS.map((f) => `<tr><td><strong>${f.label}</strong><br><span class="small">${customDetail[f.id] ? customDetail[f.id]() : f.kind === 'excess' ? 'Modeled as added annual risk (see section 3).' : f.options.map((o) => `${escapeHtml(o.label)}: HR ${o.anchors ? o.anchors.map(([a, h]) => `${h.toFixed(2)} at ${a}`).join(', ') : o.rr}`).join('; ')}</span></td><td>${f.cite.map(citeShort).join('; ')}</td></tr>`).join('');
   $('#method').innerHTML = `<div class="panel method">
     <p class="eyebrow">Methodology</p>
     <h1>How MyActuary builds your life table</h1>
@@ -454,6 +560,17 @@ function renderMethod() {
       <li><strong>Bounds.</strong> The combined multiplier saturates smoothly between 0.35× and 10× population mortality.</li>
       <li><strong>Added (excess) risk.</strong> Cancer, occupation, hazardous activities and driving are added to the hazard rather than multiplied, because their risk does not scale with age-related mortality. Cancer uses SEER 5-year relative survival by type and stage, front-loaded in the first two years and fading to a small residual after five. Occupation uses BLS fatal-injury rates until age 67. Activities use published fatality rates per participant. Driving scales the U.S. motor-vehicle death rate by your record and seat-belt use.</li>
       <li><strong>Race/ethnicity and state.</strong> Age-specific hazard ratios were solved so that, applied to the SSA baseline, they reproduce each group's published life expectancy relative to the U.S. total (NCHS 2024 U.S. life tables at ages 20\u201385; NCHS 2022 state life tables at birth and age 65). They are combined with income and education with diminishing weights because these overlap heavily.</li>
+      <li><strong>Other diagnosed conditions.</strong> Each condition on the organ-system checklist carries an all-cause hazard ratio (or, for dialysis, kidney transplant and pulmonary fibrosis, an added annual death rate) from the cited meta-analysis or registry. Several conditions combine with the same diminishing weights as above. Because the SSA baseline already includes people with these conditions, someone who ticks none receives a small credit equal to the population-average effect, using each condition's approximate prevalence scaled by age (×e<sup>(age−50)/25</sup>, bounded between 0.3 and 2).</li>
+      <li><strong>Sleep apnea.</strong> Untreated moderate and severe obstructive sleep apnea use the Sleep Heart Health Study hazard ratios (Punjabi 2009). Treated apnea is assigned a near-neutral ratio, following the CPAP-treated group in Marin 2005.</li>
+      <li><strong>Family medical history (a method built for MyActuary).</strong> Published studies report how much a relative's illness raises your risk of getting that disease, not your risk of dying from any cause. MyActuary converts one into the other in five steps:
+        <ol>
+          <li>For each condition, take the meta-analytic relative risk RR of the disease when one first-degree relative (parent, sibling or child) is affected.</li>
+          <li>If that relative was diagnosed young (before a condition-specific cutoff such as 50 for colorectal or 65 for prostate cancer), use RR<sup>1.4</sup>, or the published early-onset estimate where one exists (stroke). With two or more affected first-degree relatives, use at least RR<sup>1.7</sup>. These exponents reproduce the published multi-relative and early-onset estimates for breast, colorectal and prostate cancer within about 10%.</li>
+          <li>Second-degree relatives (grandparents, aunts, uncles) share half as many genes, so they carry half the excess: 1 + (RR − 1)/2, or 1 + 0.75(RR − 1) with two or more. On top of a first-degree history they add the square root of that factor.</li>
+          <li>Assuming the disease is no more or less fatal once it occurs, deaths from that cause rise by the same RR. With s the cause's share of all U.S. deaths at your age and sex (CDC WONDER, under and over 65), the all-cause hazard ratio is 1 + s(RR − 1).</li>
+          <li>Divide by the average effect in the population, 1 + s·p(RR − 1), where p is the share of adults with an affected first-degree relative. A typical family history therefore leaves the baseline unchanged. Conditions you don't list stay at the average; only if you confirm that your list is complete (or that there is no family history) do unlisted conditions earn the small credit of a clean history.</li>
+        </ol>
+        The effects of all conditions are multiplied, then combined with parental longevity and genetic conditions using the diminishing weights above. Sex-specific cancers (prostate, ovarian) only affect people of that sex.</li>
       <li><strong>Smoking cessation.</strong> Former smokers' excess risk declines with time since quitting, following Jha et al. (2013). The "quit now" scenario uses the same trajectory.</li>
     </ul>
     <h3>4. Outputs</h3>
@@ -462,7 +579,8 @@ function renderMethod() {
     <ul>
       <li>Hazard ratios come from observational studies (except blood pressure and cholesterol treatment) and may include residual confounding.</li>
       <li>Race/ethnicity and state effects are calibrated to published NCHS life expectancies at several ages, so they capture average differences only; county and neighborhood differences within a state are larger still. U.S. insurers may not use race.</li>
-      <li>Organ transplant and some rarer serious conditions are not modeled. Cancer survival is approximated by type and stage only.</li>
+      <li>Family-history effects use published relative risks for disease incidence; the conversion to all-cause mortality and the early-onset and multi-relative exponents are MyActuary's own approximations, not results from a single study.</li>
+      <li>Transplants other than kidney and some rarer serious conditions are not modeled. Cancer survival is approximated by type and stage only.</li>
       <li>Income and education effects are partly explained by health behaviors and access to care; the hazard ratios used are attenuated for behaviors, and they overlap with each other, so they are combined with diminishing weights.</li>
       <li>Population prevalence figures are approximate.</li>
     </ul>
@@ -500,6 +618,22 @@ function init() {
   $('#questionnaire').addEventListener('click', (e) => {
     const u = e.target.closest('[data-units]');
     if (u) { state.answers.body.units = u.dataset.units; save(); renderForm(); }
+    if (e.target.closest('[data-fh-add]')) {
+      const v = state.answers.familyHx || { answered: true, entries: [] };
+      if (v.entries.length < 40) v.entries.push({ rel: '', cond: '', age: '' });
+      v.answered = true;
+      state.answers.familyHx = v;
+      rerenderKeepScroll();
+      const sels = document.querySelectorAll('.fh-row select[data-fh-key="rel"]');
+      sels[sels.length - 1]?.focus();
+    }
+    const rm = e.target.closest('[data-fh-remove]');
+    if (rm) {
+      const v = state.answers.familyHx;
+      v.entries.splice(Number(rm.dataset.fhRemove), 1);
+      if (!v.entries.length) { v.answered = false; v.complete = false; }
+      rerenderKeepScroll();
+    }
   });
   $('#stepper-list').addEventListener('click', (e) => {
     const b = e.target.closest('[data-step]');

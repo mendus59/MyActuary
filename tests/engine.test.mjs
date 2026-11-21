@@ -28,7 +28,7 @@ test('prevalence weights sum to 1 and every factor cites a known source', () => 
   for (const f of FACTORS) {
     assert.ok(f.cite.length > 0);
     f.cite.forEach((c) => assert.ok(CITATIONS[c], `${f.id} cites unknown ${c}`));
-    if (f.kind === 'excess' || f.normalized) continue;
+    if (f.kind === 'excess' || f.kind === 'custom' || f.normalized) continue;
     const s = f.options.reduce((a, o) => a + o.prev, 0);
     assert.ok(Math.abs(s - 1) < 0.005, `${f.id} prevalence sums to ${s}`);
     assert.ok(f.cite.length > 0);
@@ -136,4 +136,41 @@ test('liver disease and dementia raise mortality in order of severity', () => {
   const decomp = e({ liver: { status: 'decomp' } });
   assert.ok(none > masld && masld > comp && comp > decomp && decomp < 6);
   assert.ok(e({ dementia: 'severe' }) < e({ dementia: 'mild' }));
+});
+
+test('family history: father with prostate cancer, grandparents with cancer, multiple and early relatives', () => {
+  const opts = { currentYear: 2026 };
+  const p = { age: 40, sex: 'male' };
+  const e = (entries) => evaluate({ person: p, familyHx: { answered: true, entries } }, opts).e;
+  const base = evaluate({ person: p }, opts).e;
+  const clean = e([]);
+  const dad = e([{ rel: 'father', cond: 'prostate', age: '60s' }]);
+  const dadEarly = e([{ rel: 'father', cond: 'prostate', age: 'lt50' }]);
+  const gp = e([{ rel: 'grandparent', cond: 'otherCancer', age: 'unk' }]);
+  const two = e([{ rel: 'father', cond: 'colorectal', age: '60s' }, { rel: 'sibling', cond: 'colorectal', age: '60s' }]);
+  const one = e([{ rel: 'father', cond: 'colorectal', age: '60s' }]);
+  assert.ok(clean > base && clean - base < 1.0, `clean history credit ${clean - base}`);
+  // Unlisted conditions stay at the population average, so a single entry is measured against base.
+  assert.ok(dad < base && base - dad > 0.1 && base - dad < 1.5, `prostate effect ${base - dad}`);
+  assert.ok(dadEarly < dad);
+  assert.ok(gp < base && base - gp < base - dad, `grandparent effect ${base - gp}`);
+  const dadComplete = evaluate({ person: p, familyHx: { answered: true, complete: true, entries: [{ rel: 'father', cond: 'prostate', age: '60s' }] } }, opts).e;
+  assert.ok(dadComplete > dad && dadComplete < clean);
+  assert.ok(two < one);
+  // Sex-specific cancers do not affect the other sex.
+  const f = (entries) => evaluate({ person: { age: 40, sex: 'female' }, familyHx: { answered: true, entries } }, opts).e;
+  assert.ok(Math.abs(f([{ rel: 'father', cond: 'prostate', age: '60s' }]) - evaluate({ person: { age: 40, sex: 'female' } }, opts).e) < 1e-9);
+});
+
+test('sleep apnea and other conditions', () => {
+  const opts = { currentYear: 2026 };
+  const p = { age: 50, sex: 'male' };
+  const e = (x) => evaluate({ person: p, ...x }, opts).e;
+  assert.ok(e({ apnea: 'severe' }) < e({ apnea: 'moderate' }) && e({ apnea: 'moderate' }) < e({ apnea: 'treated' }));
+  const r = evaluate({ person: p, apnea: 'severe' }, opts);
+  assert.ok(r.detriments.some((d) => d.id === 'apnea'), 'untreated apnea listed as a detriment');
+  const none = e({ conditions: { answered: true, items: {} } });
+  const ra = e({ conditions: { answered: true, items: { ra: true } } });
+  const dial = e({ conditions: { answered: true, items: { dialysis: true } } });
+  assert.ok(none > ra && ra > dial && dial < 15, `none ${none} ra ${ra} dialysis ${dial}`);
 });

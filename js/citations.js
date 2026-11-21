@@ -242,6 +242,163 @@ export const CITATIONS = {
     full: 'Brodaty H, Seeher K, Gibson L. Dementia time to death: a systematic literature review on survival time and years of life lost in people with dementia. Int Psychogeriatr. 2012;24(7):1034-1045.',
     doi: '10.1017/S1041610211002924',
   },
+  punjabi2009: {
+    short: 'Punjabi et al., PLoS Med 2009',
+    full: 'Punjabi NM, Caffo BS, Goodwin JL, et al. Sleep-disordered breathing and mortality: a prospective cohort study. PLoS Med. 2009;6(8):e1000132.',
+    doi: '10.1371/journal.pmed.1000132',
+  },
+  marin2005: {
+    short: 'Marin et al., Lancet 2005',
+    full: 'Marin JM, Carrizo SJ, Vicente E, Agusti AGN. Long-term cardiovascular outcomes in men with obstructive sleep apnoea-hypopnoea with or without treatment with continuous positive airway pressure: an observational study. Lancet. 2005;365(9464):1046-1053.',
+    doi: '10.1016/S0140-6736(05)71141-7',
+  },
+  ley2011: {
+    short: 'Ley et al., Am J Respir Crit Care Med 2011',
+    full: 'Ley B, Collard HR, King TE Jr. Clinical course and prediction of survival in idiopathic pulmonary fibrosis. Am J Respir Crit Care Med. 2011;183(4):431-440.',
+    doi: '10.1164/rccm.201006-0894CI',
+  },
+  thurman2017: {
+    short: 'Thurman et al., Epilepsia 2017',
+    full: 'Thurman DJ, Logroscino G, Beghi E, et al. The burden of premature mortality of epilepsy in high-income countries: a systematic review from the Mortality Task Force of the International League Against Epilepsy. Epilepsia. 2017;58(1):17-26.',
+  },
+  macleod2014: {
+    short: 'Macleod et al., Mov Disord 2014',
+    full: 'Macleod AD, Taylor KSM, Counsell CE. Mortality in Parkinson’s disease: a systematic review and meta-analysis. Mov Disord. 2014;29(13):1615-1622.',
+    doi: '10.1002/mds.25898',
+  },
+  lunde2017: {
+    short: 'Lunde et al., J Neurol Neurosurg Psychiatry 2017',
+    full: 'Lunde HMB, Assmus J, Myhr KM, Bø L, Grytten N. Survival and cause of death in multiple sclerosis: a 60-year longitudinal population study. J Neurol Neurosurg Psychiatry. 2017;88(8):621-625.',
+    doi: '10.1136/jnnp-2016-315238',
+  },
+  abic2008: {
+    short: 'Ankle Brachial Index Collaboration, JAMA 2008',
+    full: 'Ankle Brachial Index Collaboration. Ankle brachial index combined with Framingham Risk Score to predict cardiovascular events and mortality: a meta-analysis. JAMA. 2008;300(2):197-208.',
+    doi: '10.1001/jama.300.2.197',
+  },
+  usrds: {
+    short: 'USRDS Annual Data Report',
+    full: 'United States Renal Data System. Annual Data Report: Epidemiology of Kidney Disease in the United States. National Institutes of Health, NIDDK. Survival after initiation of dialysis and after kidney transplantation.',
+    url: 'https://usrds-adr.niddk.nih.gov/',
+  },
+  bewtra2013: {
+    short: 'Bewtra et al., Inflamm Bowel Dis 2013',
+    full: 'Bewtra M, Kaiser LM, TenHave T, Lewis JD. Crohn’s disease and ulcerative colitis are associated with elevated standardized mortality ratios: a meta-analysis. Inflamm Bowel Dis. 2013;19(3):599-613.',
+  },
+  dadoun2013: {
+    short: 'Dadoun et al., Joint Bone Spine 2013',
+    full: 'Dadoun S, Zeboulon-Ktorza N, Combescure C, et al. Mortality in rheumatoid arthritis over the last fifty years: systematic review and meta-analysis. Joint Bone Spine. 2013;80(1):29-33.',
+    doi: '10.1016/j.jbspin.2012.02.005',
+  },
+  yurkovich2014: {
+    short: 'Yurkovich et al., Arthritis Care Res 2014',
+    full: 'Yurkovich M, Vostretsova K, Chen W, Aviña-Zubieta JA. Overall and cause-specific mortality in patients with systemic lupus erythematosus: a meta-analysis of observational studies. Arthritis Care Res. 2014;66(4):608-616.',
+    doi: '10.1002/acr.22173',
+  },
+  gelfand2007: {
+    short: 'Gelfand et al., Arch Dermatol 2007',
+    full: 'Gelfand JM, Troxel AB, Lewis JD, et al. The risk of mortality in patients with psoriasis: results from a population-based study. Arch Dermatol. 2007;143(12):1493-1499.',
+    doi: '10.1001/archderm.143.12.1493',
+  },
+  haentjens2010: {
+    short: 'Haentjens et al., Ann Intern Med 2010',
+    full: 'Haentjens P, Magaziner J, Colón-Emeric CS, et al. Meta-analysis: excess mortality after hip fracture among older women and men. Ann Intern Med. 2010;152(6):380-390.',
+    doi: '10.7326/0003-4819-152-6-201003160-00008',
+  },
+  lebwohl2020: {
+    short: 'Lebwohl et al., JAMA 2020',
+    full: 'Lebwohl B, Green PHR, Söderling J, Roelstraete B, Ludvigsson JF. Association between celiac disease and mortality risk in a Swedish population. JAMA. 2020;323(13):1277-1285.',
+    doi: '10.1001/jama.2020.1943',
+  },
+  nuesch2011: {
+    short: 'Nüesch et al., BMJ 2011',
+    full: 'Nüesch E, Dieppe P, Reichenbach S, et al. All cause and disease specific mortality in patients with knee or hip osteoarthritis: population based cohort study. BMJ. 2011;342:d1165.',
+    doi: '10.1136/bmj.d1165',
+  },
+  arcelus2011: {
+    short: 'Arcelus et al., Arch Gen Psychiatry 2011',
+    full: 'Arcelus J, Mitchell AJ, Wales J, Nielsen S. Mortality rates in patients with anorexia nervosa and other eating disorders: a meta-analysis of 36 studies. Arch Gen Psychiatry. 2011;68(7):724-731.',
+    doi: '10.1001/archgenpsychiatry.2011.74',
+  },
+  dalsgaard2015: {
+    short: 'Dalsgaard et al., Lancet 2015',
+    full: 'Dalsgaard S, Østergaard SD, Leckman JF, Mortensen PB, Pedersen MG. Mortality in children, adolescents, and adults with attention deficit hyperactivity disorder: a nationwide cohort study. Lancet. 2015;385(9983):2190-2196.',
+    doi: '10.1016/S0140-6736(14)61684-6',
+  },
+  walker2015: {
+    short: 'Walker et al., JAMA Psychiatry 2015',
+    full: 'Walker ER, McGee RE, Druss BG. Mortality in mental disorders and global disease burden implications: a systematic review and meta-analysis. JAMA Psychiatry. 2015;72(4):334-341.',
+    doi: '10.1001/jamapsychiatry.2014.2502',
+  },
+  kicinski2011: {
+    short: 'Kicinski et al., PLoS One 2011',
+    full: 'Kicinski M, Vangronsveld J, Nawrot TS. An epidemiological reappraisal of the familial aggregation of prostate cancer: a meta-analysis. PLoS One. 2011;6(10):e27130.',
+    doi: '10.1371/journal.pone.0027130',
+  },
+  cghfbc2001: {
+    short: 'Collaborative Group on Hormonal Factors in Breast Cancer, Lancet 2001',
+    full: 'Collaborative Group on Hormonal Factors in Breast Cancer. Familial breast cancer: collaborative reanalysis of individual data from 52 epidemiological studies including 58 209 women with breast cancer and 101 986 women without the disease. Lancet. 2001;358(9291):1389-1399.',
+    doi: '10.1016/S0140-6736(01)06524-2',
+  },
+  stratton1998: {
+    short: 'Stratton et al., BJOG 1998',
+    full: 'Stratton JF, Pharoah P, Smith SK, Easton D, Ponder BA. A systematic review and meta-analysis of family history and risk of ovarian cancer. Br J Obstet Gynaecol. 1998;105(5):493-499.',
+  },
+  butterworth2006: {
+    short: 'Butterworth et al., Eur J Cancer 2006',
+    full: 'Butterworth AS, Higgins JPT, Pharoah P. Relative and absolute risk of colorectal cancer for individuals with a family history: a meta-analysis. Eur J Cancer. 2006;42(2):216-227.',
+    doi: '10.1016/j.ejca.2005.09.023',
+  },
+  matakidou2005: {
+    short: 'Matakidou et al., Br J Cancer 2005',
+    full: 'Matakidou A, Eisen T, Houlston RS. Systematic review of the relationship between family history and lung cancer risk. Br J Cancer. 2005;93(7):825-833.',
+    doi: '10.1038/sj.bjc.6602769',
+  },
+  permuthwey2009: {
+    short: 'Permuth-Wey & Egan, Fam Cancer 2009',
+    full: 'Permuth-Wey J, Egan KM. Family history is a significant risk factor for pancreatic cancer: results from a systematic review and meta-analysis. Fam Cancer. 2009;8(2):109-117.',
+    doi: '10.1007/s10689-008-9214-8',
+  },
+  gandini2005: {
+    short: 'Gandini et al., Eur J Cancer 2005',
+    full: 'Gandini S, Sera F, Cattaruzza MS, et al. Meta-analysis of risk factors for cutaneous melanoma: III. Family history, actinic damage and phenotypic factors. Eur J Cancer. 2005;41(14):2040-2059.',
+    doi: '10.1016/j.ejca.2005.03.034',
+  },
+  kharazmi2012: {
+    short: 'Kharazmi et al., BMJ 2012',
+    full: 'Kharazmi E, Fallah M, Sundquist K, Hemminki K. Familial risk of early and late onset cancer: nationwide prospective cohort study. BMJ. 2012;345:e8076.',
+    doi: '10.1136/bmj.e8076',
+  },
+  murabito2005: {
+    short: 'Murabito et al., JAMA 2005',
+    full: 'Murabito JM, Pencina MJ, Nam BH, et al. Sibling cardiovascular disease as a risk factor for cardiovascular disease in middle-aged adults. JAMA. 2005;294(24):3117-3123.',
+    doi: '10.1001/jama.294.24.3117',
+  },
+  friedlander1998: {
+    short: 'Friedlander et al., Circulation 1998',
+    full: 'Friedlander Y, Siscovick DS, Weinmann S, et al. Family history as a risk factor for primary cardiac arrest. Circulation. 1998;97(2):155-160.',
+    doi: '10.1161/01.CIR.97.2.155',
+  },
+  seshadri2010: {
+    short: 'Seshadri et al., Circulation 2010',
+    full: 'Seshadri S, Beiser A, Pikula A, et al. Parental occurrence of stroke and risk of stroke in their children: the Framingham study. Circulation. 2010;121(11):1304-1312.',
+    doi: '10.1161/CIRCULATIONAHA.109.854240',
+  },
+  interact2013: {
+    short: 'InterAct Consortium, Diabetologia 2013',
+    full: 'InterAct Consortium. The link between family history and risk of type 2 diabetes is not explained by anthropometric, lifestyle or genetic risk factors: the EPIC-InterAct study. Diabetologia. 2013;56(1):60-69.',
+    doi: '10.1007/s00125-012-2715-x',
+  },
+  loy2014: {
+    short: 'Loy et al., Lancet 2014',
+    full: 'Loy CT, Schofield PR, Turner AM, Kwok JBJ. Genetics of dementia. Lancet. 2014;383(9919):828-840.',
+    doi: '10.1016/S0140-6736(13)60630-3',
+  },
+  cdcWonder: {
+    short: 'CDC WONDER, Underlying Cause of Death',
+    full: 'Centers for Disease Control and Prevention. CDC WONDER: Underlying Cause of Death, 2018–2023, by age group and sex. Used for each cause’s approximate share of all deaths.',
+    url: 'https://wonder.cdc.gov/ucd-icd10-expanded.html',
+  },
   nhanes: {
     short: 'CDC NCHS (NHANES / NHIS)',
     full: 'Centers for Disease Control and Prevention, National Center for Health Statistics. National Health and Nutrition Examination Survey (2017–March 2020) and National Health Interview Survey. Used for approximate U.S. adult prevalence of each risk level, which anchors the baseline table to the average population.',
