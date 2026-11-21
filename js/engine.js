@@ -3,7 +3,7 @@ import { SSA_2023 } from './data/ssa-2023.js';
 import { FACTORS } from './factors.js';
 
 export const MAX_AGE = 120;
-export const MODEL_VERSION = '1.1.0';
+export const MODEL_VERSION = '1.2.0';
 export const DEFAULT_IMPROVEMENT = 0.007; // long-range average annual decline in death rates (SSA Trustees, intermediate)
 const OVERLAP_DECAY = 0.8; // weight multiplier for each additional factor in the same pathway group
 const OVERLAP_FLOOR = 0.5;
@@ -28,6 +28,7 @@ const EXCESS_FACTORS = FACTORS.filter(isExcess);
 
 const meanRRCache = new Map();
 function meanRR(factor) {
+  if (factor.normalized) return 1;
   if (!meanRRCache.has(factor.id)) {
     const tot = factor.options.reduce((s, o) => s + o.prev, 0);
     meanRRCache.set(factor.id, factor.options.reduce((s, o) => s + o.prev * o.rr, 0) / tot);
@@ -61,8 +62,24 @@ function factorLog(factor, optionId, age, t) {
   if (optionId == null) return 0;
   const effId = factor.trajectory ? factor.trajectory(optionId, t) : optionId;
   const o = findOption(factor, effId);
-  if (!o || o.rr == null) return 0;
+  if (!o) return 0;
+  if (o.anchors) return Math.log(anchorHR(o.anchors, age));
+  if (o.rr == null) return 0;
   return Math.log(o.rr / meanRR(factor)) * ageWeight(factor, age);
+}
+
+// Log-linear interpolation of age-specific hazard ratios; flat beyond the end anchors.
+export function anchorHR(anchors, age) {
+  if (age <= anchors[0][0]) return anchors[0][1];
+  for (let i = 1; i < anchors.length; i++) {
+    const [a1, h1] = anchors[i];
+    if (age <= a1) {
+      const [a0, h0] = anchors[i - 1];
+      const w = (age - a0) / (a1 - a0);
+      return Math.exp(Math.log(h0) * (1 - w) + Math.log(h1) * w);
+    }
+  }
+  return anchors[anchors.length - 1][1];
 }
 
 // Combine per-factor log hazards. Within a pathway group, same-direction effects are
@@ -232,7 +249,7 @@ export function evaluate(answers, { currentYear } = {}) {
       const o = findOption(f, val);
       answer = o.label;
       rr = o.rr;
-      relative = o.rr / meanRR(f);
+      relative = o.anchors ? anchorHR(o.anchors, age) : o.rr / meanRR(f);
       if (f.modifiable && o.improvesTo) {
         improved = o.improvesTo;
         target = findOption(f, o.improvesTo).label;
