@@ -1,9 +1,9 @@
 // Life-table engine. Pure functions with no DOM access, so it runs in the browser and in Node tests.
 import { SSA_2023 } from './data/ssa-2023.js';
-import { FACTORS, FACTOR_BY_ID } from './factors.js';
+import { FACTORS } from './factors.js';
 
 export const MAX_AGE = 120;
-export const MODEL_VERSION = '1.0.0';
+export const MODEL_VERSION = '1.1.0';
 export const DEFAULT_IMPROVEMENT = 0.007; // long-range average annual decline in death rates (SSA Trustees, intermediate)
 const OVERLAP_DECAY = 0.8; // weight multiplier for each additional factor in the same pathway group
 const OVERLAP_FLOOR = 0.5;
@@ -21,6 +21,10 @@ export function baseQ(sex, age) {
   if (sex === 'female') return f;
   return (m + f) / 2;
 }
+
+const isExcess = (f) => f.kind === 'excess';
+const RR_FACTORS = FACTORS.filter((f) => !isExcess(f));
+const EXCESS_FACTORS = FACTORS.filter(isExcess);
 
 const meanRRCache = new Map();
 function meanRR(factor) {
@@ -40,7 +44,7 @@ export function resolveAnswers(answers) {
   const out = {};
   for (const f of FACTORS) {
     let v = null;
-    if (typeof f.resolve === 'function') v = f.resolve(answers);
+    if (typeof f.resolve === 'function') v = f.resolve(answers) ?? null;
     else if (answers[f.id] && f.options.some((o) => o.id === answers[f.id])) v = answers[f.id];
     out[f.id] = v;
   }
@@ -77,13 +81,25 @@ function combine(logsByGroup) {
 
 export function multiplierAt(resolved, age, t, scale = 1) {
   const groups = new Map();
-  for (const f of FACTORS) {
+  for (const f of RR_FACTORS) {
     const l = factorLog(f, resolved[f.id], age, t) * scale;
     if (l === 0) continue;
     if (!groups.has(f.group)) groups.set(f.group, []);
     groups.get(f.group).push(l);
   }
   return softBound(combine(groups));
+}
+
+// Additive (excess) annual hazard from accident exposures and cancer, which do not scale
+// with background mortality the way chronic risk factors do.
+export function excessAt(resolved, age, t, baseMu, scale = 1) {
+  let x = 0;
+  for (const f of EXCESS_FACTORS) {
+    const v = resolved[f.id];
+    if (v == null) continue;
+    x += f.excessAt(v, { age, t, baseMu }) * scale;
+  }
+  return x;
 }
 
 // Smoothly saturating map from a log hazard to a multiplier: ~exp(L) for small |L|,
@@ -112,10 +128,13 @@ export function buildTable(resolved, opts) {
     const impFactor = Math.pow(1 - imp, Math.max(0, year - SSA_2023.baseYear));
     const qb = Math.min(1, baseQ(sex, x) * impFactor);
     const m = multiplierAt(resolved, x, t, scale);
-    const q = x >= MAX_AGE ? 1 : 1 - Math.exp(Math.log(1 - Math.min(qb, 0.999999)) * m);
+    const mu = -Math.log(1 - Math.min(qb, 0.999999));
+    const ex = excessAt(resolved, x, t, mu, scale);
+    const hazard = Math.max(mu * m * 0.25, mu * m + ex);
+    const q = x >= MAX_AGE ? 1 : 1 - Math.exp(-hazard);
     const qbase = x >= MAX_AGE ? 1 : qb;
     const d = l * q;
-    rows.push({ age: x, year, q, qBase: qbase, mult: m, l, d, lBase, S: l / 100000, SBase: lBase / 100000 });
+    rows.push({ age: x, year, q, qBase: qbase, mult: x >= MAX_AGE ? m : -Math.log(1 - q) / mu, l, d, lBase, S: l / 100000, SBase: lBase / 100000 });
     l -= d;
     lBase -= lBase * qbase;
   }
@@ -161,6 +180,7 @@ export function ratingClass(ratio) {
   if (pct <= 90) return { label: 'Preferred (illustrative)', tier: 2 };
   if (pct <= 110) return { label: 'Standard Plus (illustrative)', tier: 3 };
   if (pct <= 135) return { label: 'Standard (illustrative)', tier: 4 };
+  if (pct > 500) return { label: 'Beyond Table 16: postpone or decline (illustrative)', tier: 6 };
   const table = Math.min(16, Math.ceil((pct - 100) / 25));
   return { label: `Substandard, Table ${table} (illustrative)`, tier: 5 };
 }
@@ -190,28 +210,49 @@ export function evaluate(answers, { currentYear } = {}) {
 
   // Factor contributions relative to the population-average respondent.
   const contributions = [];
+  const improvements = {};
   for (const f of FACTORS) {
-    const optId = resolved[f.id];
-    if (optId == null) continue;
+    const val = resolved[f.id];
+    if (val == null) continue;
     const without = { ...resolved, [f.id]: null };
     const eWithout = lifeExpectancy(without, opts);
-    const o = findOption(f, optId);
     let gain = 0;
     let target = null;
-    if (f.modifiable && o.improvesTo) {
-      target = findOption(f, o.improvesTo);
-      gain = lifeExpectancy({ ...resolved, [f.id]: o.improvesTo }, opts) - e;
+    let answer;
+    let rr = null;
+    let relative = null;
+    let improved = null;
+    if (isExcess(f)) {
+      answer = f.describe(val);
+      if (f.modifiable && f.improve) {
+        improved = f.improve(val);
+        if (improved) target = f.targetLabel;
+      }
+    } else {
+      const o = findOption(f, val);
+      answer = o.label;
+      rr = o.rr;
+      relative = o.rr / meanRR(f);
+      if (f.modifiable && o.improvesTo) {
+        improved = o.improvesTo;
+        target = findOption(f, o.improvesTo).label;
+      }
+    }
+    if (improved != null) {
+      improvements[f.id] = improved;
+      gain = lifeExpectancy({ ...resolved, [f.id]: improved }, opts) - e;
     }
     contributions.push({
       id: f.id,
       label: f.label,
-      answer: o.label,
-      rr: o.rr,
-      relative: o.rr / meanRR(f),
+      answer,
+      rr,
+      relative,
+      excess: isExcess(f),
       vsAverage: e - eWithout,
       modifiable: !!f.modifiable,
       gain,
-      target: target ? target.label : null,
+      target,
       advice: f.advice || '',
       cite: f.cite,
     });
@@ -221,7 +262,7 @@ export function evaluate(answers, { currentYear } = {}) {
     .sort((a, b) => b.gain - a.gain);
 
   const allImproved = { ...resolved };
-  for (const c of detriments) allImproved[c.id] = findOption(FACTOR_BY_ID[c.id], resolved[c.id]).improvesTo;
+  for (const c of detriments) allImproved[c.id] = improvements[c.id];
   const eAllImproved = detriments.length ? lifeExpectancy(allImproved, opts) : e;
 
   const sensitivity = {

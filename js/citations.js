@@ -119,6 +119,104 @@ export const CITATIONS = {
     full: 'Lloyd-Jones DM, Nam BH, D’Agostino RB Sr, et al. Parental cardiovascular disease as a risk factor for cardiovascular disease in middle-aged adults: a prospective study of parents and offspring. JAMA. 2004;291(18):2204-2211.',
     doi: '10.1001/jama.291.18.2204',
   },
+  seer: {
+    short: 'NCI SEER Cancer Stat Facts',
+    full: 'National Cancer Institute, Surveillance, Epidemiology, and End Results (SEER) Program. Cancer Stat Facts: 5-year relative survival by stage at diagnosis (SEER 22, 2014–2020).',
+    url: 'https://seer.cancer.gov/statfacts/',
+  },
+  jones2019: {
+    short: 'Jones et al., Eur J Heart Fail 2019',
+    full: 'Jones NR, Roalfe AK, Adoki I, Hobbs FDR, Taylor CJ. Survival of patients with chronic heart failure in the community: a systematic review and meta-analysis. Eur J Heart Fail. 2019;21(11):1306-1325.',
+    doi: '10.1002/ejhf.1594',
+  },
+  mannino2003: {
+    short: 'Mannino et al., Thorax 2003',
+    full: 'Mannino DM, Buist AS, Petty TL, Enright PL, Redd SC. Lung function and mortality in the United States: data from the First National Health and Nutrition Examination Survey follow up study. Thorax. 2003;58(5):388-393.',
+    doi: '10.1136/thorax.58.5.388',
+  },
+  marcus2020: {
+    short: 'Marcus et al., JAMA Netw Open 2020',
+    full: 'Marcus JL, Leyden WA, Alexeeff SE, et al. Comparison of overall and comorbidity-free life expectancy between insured adults with and without HIV infection, 2000-2016. JAMA Netw Open. 2020;3(6):e207954.',
+    doi: '10.1001/jamanetworkopen.2020.7954',
+  },
+  finch2014: {
+    short: 'Finch et al., J Clin Oncol 2014',
+    full: 'Finch APM, Lubinski J, Møller P, et al. Impact of oophorectomy on cancer incidence and mortality in women with a BRCA1 or BRCA2 mutation. J Clin Oncol. 2014;32(15):1547-1553.',
+    doi: '10.1200/JCO.2013.53.2820',
+  },
+  versmissen2008: {
+    short: 'Versmissen et al., BMJ 2008',
+    full: 'Versmissen J, Oosterveer DM, Yazdanpanah M, et al. Efficacy of statins in familial hypercholesterolaemia: a long term cohort study. BMJ. 2008;337:a2423.',
+    doi: '10.1136/bmj.a2423',
+  },
+  desalvo2006: {
+    short: 'DeSalvo et al., J Gen Intern Med 2006',
+    full: 'DeSalvo KB, Bloser N, Reynolds K, He J, Muntner P. Mortality prediction with a single general self-rated health question: a meta-analysis. J Gen Intern Med. 2006;21(3):267-275.',
+    doi: '10.1111/j.1525-1497.2005.00291.x',
+  },
+  chetty2016: {
+    short: 'Chetty et al., JAMA 2016',
+    full: 'Chetty R, Stepner M, Abraham S, et al. The association between income and life expectancy in the United States, 2001-2014. JAMA. 2016;315(16):1750-1766.',
+    doi: '10.1001/jama.2016.4226',
+  },
+  lantz1998: {
+    short: 'Lantz et al., JAMA 1998',
+    full: 'Lantz PM, House JS, Lepkowski JM, Williams DR, Mero RP, Chen J. Socioeconomic factors, health behaviors, and mortality: results from a nationally representative prospective study of US adults. JAMA. 1998;279(21):1703-1708.',
+    doi: '10.1001/jama.279.21.1703',
+  },
+  krueger2015: {
+    short: 'Krueger et al., PLoS One 2015',
+    full: 'Krueger PM, Tran MK, Hummer RA, Chang VW. Mortality attributable to low levels of education in the United States. PLoS One. 2015;10(7):e0131809.',
+    doi: '10.1371/journal.pone.0131809',
+  },
+  roelfs2011: {
+    short: 'Roelfs et al., Am J Epidemiol 2011',
+    full: 'Roelfs DJ, Shor E, Kalish R, Yogev T. The rising relative risk of mortality for singles: meta-analysis and meta-regression. Am J Epidemiol. 2011;174(4):379-389.',
+    doi: '10.1093/aje/kwr111',
+  },
+  shor2012: {
+    short: 'Shor et al., Soc Sci Med 2012',
+    full: 'Shor E, Roelfs DJ, Bugyi P, Schwartz JE. Meta-analysis of marital dissolution and mortality: reevaluating the intersection of gender and age. Soc Sci Med. 2012;75(1):46-59.',
+    doi: '10.1016/j.socscimed.2012.03.003',
+  },
+  bls: {
+    short: 'BLS Census of Fatal Occupational Injuries',
+    full: 'U.S. Bureau of Labor Statistics. Census of Fatal Occupational Injuries: fatal work injury rates per 100,000 full-time equivalent workers by occupation (2023).',
+    url: 'https://www.bls.gov/iif/fatal-injuries-tables.htm',
+  },
+  uspa: {
+    short: 'U.S. Parachute Association safety data',
+    full: 'United States Parachute Association. Skydiving safety: annual U.S. fatality counts and rate per 100,000 jumps.',
+    url: 'https://www.uspa.org/skydiving-safety',
+  },
+  denoble2008: {
+    short: 'Denoble et al., Diving Hyperb Med 2008',
+    full: 'Denoble PJ, Pollock NW, Vaithiyanathan P, Caruso JL, Dovenbarger JA, Vann RD. Scuba injury death rate among insured DAN members. Diving Hyperb Med. 2008;38(4):182-188.',
+  },
+  aopa: {
+    short: 'AOPA Air Safety Institute, McSpadden (Nall) Report',
+    full: 'AOPA Air Safety Institute. Richard G. McSpadden Report (formerly the Joseph T. Nall Report): U.S. general aviation fatal accident rates per 100,000 flight hours.',
+    url: 'https://www.aopa.org/training-and-safety/air-safety-institute/accident-analysis/mcspadden-report',
+  },
+  nhtsaMoto: {
+    short: 'NHTSA Traffic Safety Facts: Motorcycles',
+    full: 'National Highway Traffic Safety Administration. Traffic Safety Facts: Motorcycles (2022 data). Per vehicle mile traveled, motorcyclists are far more likely than passenger-car occupants to die in a crash.',
+    url: 'https://crashstats.nhtsa.dot.gov/',
+  },
+  nhtsaOverview: {
+    short: 'NHTSA Traffic Safety Facts: Overview 2022',
+    full: 'National Highway Traffic Safety Administration. Overview of Motor Vehicle Traffic Crashes in 2022 (about 42,500 deaths; roughly 13 per 100,000 population). Lap/shoulder belts reduce the risk of fatal injury to front-seat passenger-car occupants by 45%.',
+    url: 'https://www.nhtsa.gov/vehicle-safety/seat-belts',
+  },
+  gebers2003: {
+    short: 'Gebers & Peck, Accid Anal Prev 2003',
+    full: 'Gebers MA, Peck RC. Using traffic conviction correlates to identify high accident-risk drivers. Accid Anal Prev. 2003;35(6):903-912.',
+  },
+  larney2020: {
+    short: 'Larney et al., JAMA Psychiatry 2020',
+    full: 'Larney S, Tran LT, Leung J, et al. All-cause and cause-specific mortality among people using extramedical opioids: a systematic review and meta-analysis. JAMA Psychiatry. 2020;77(5):493-502.',
+    doi: '10.1001/jamapsychiatry.2019.4170',
+  },
   nhanes: {
     short: 'CDC NCHS (NHANES / NHIS)',
     full: 'Centers for Disease Control and Prevention, National Center for Health Statistics. National Health and Nutrition Examination Survey (2017–March 2020) and National Health Interview Survey. Used for approximate U.S. adult prevalence of each risk level, which anchors the baseline table to the average population.',
