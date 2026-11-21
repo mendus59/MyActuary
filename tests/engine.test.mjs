@@ -28,7 +28,7 @@ test('prevalence weights sum to 1 and every factor cites a known source', () => 
   for (const f of FACTORS) {
     assert.ok(f.cite.length > 0);
     f.cite.forEach((c) => assert.ok(CITATIONS[c], `${f.id} cites unknown ${c}`));
-    if (f.kind === 'excess') continue;
+    if (f.kind === 'excess' || f.normalized) continue;
     const s = f.options.reduce((a, o) => a + o.prev, 0);
     assert.ok(Math.abs(s - 1) < 0.005, `${f.id} prevalence sums to ${s}`);
     assert.ok(f.cite.length > 0);
@@ -111,4 +111,29 @@ test('socioeconomic gradient is in the expected direction and range', () => {
   const hi = evaluate({ person: { age: 40, sex: 'male' }, income: 'q5', education: 'ba' }, { currentYear: 2026 });
   const gap = hi.e - lo.e;
   assert.ok(gap > 4 && gap < 15, `income/education gap ${gap}`);
+});
+
+test('state and race reproduce published life-expectancy gaps at 65', () => {
+  const opts = { currentYear: 2026 };
+  const base = evaluate({ person: { age: 65, sex: 'unspecified' }, settings: { improvement: false } }, opts).e;
+  const wv = evaluate({ person: { age: 65, sex: 'unspecified' }, settings: { improvement: false }, state: 'west-virginia' }, opts).e;
+  const hi = evaluate({ person: { age: 65, sex: 'unspecified' }, settings: { improvement: false }, state: 'hawaii' }, opts).e;
+  // NCHS 2022: e65 West Virginia 16.6, Hawaii 20.5, U.S. 18.9
+  assert.ok(Math.abs(wv / base - 16.6 / 18.9) < 0.02, `WV ratio ${wv / base}`);
+  assert.ok(Math.abs(hi / base - 20.5 / 18.9) < 0.02, `HI ratio ${hi / base}`);
+  const asian = evaluate({ person: { age: 40, sex: 'unspecified' }, settings: { improvement: false }, race: 'asian' }, opts).e;
+  const all40 = evaluate({ person: { age: 40, sex: 'unspecified' }, settings: { improvement: false } }, opts).e;
+  assert.ok(asian > all40 + 3);
+});
+
+test('liver disease and dementia raise mortality in order of severity', () => {
+  const opts = { currentYear: 2026 };
+  const p = { age: 60, sex: 'male' };
+  const e = (x) => evaluate({ person: p, ...x }, opts).e;
+  const none = e({ liver: { status: 'none' } });
+  const masld = e({ liver: { status: 'masld' } });
+  const comp = e({ liver: { status: 'cirrhosis' } });
+  const decomp = e({ liver: { status: 'decomp' } });
+  assert.ok(none > masld && masld > comp && comp > decomp && decomp < 6);
+  assert.ok(e({ dementia: 'severe' }) < e({ dementia: 'mild' }));
 });

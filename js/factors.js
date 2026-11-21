@@ -27,7 +27,7 @@ export const SECTIONS = [
   { id: 'cancer', title: 'Cancer', blurb: 'Survival after cancer depends mostly on the type and the stage at diagnosis.' },
   { id: 'family', title: 'Family and genetic history', blurb: 'Parental longevity and known inherited conditions.' },
   { id: 'exposures', title: 'Occupation, activities and driving', blurb: 'Insurers ask about these because they add accident risk on top of health risk.' },
-  { id: 'life', title: 'Life circumstances', blurb: 'Income, education and relationships are strong, well-documented predictors of U.S. mortality.' },
+  { id: 'life', title: 'Life circumstances', blurb: 'Where you live, income, education and relationships are strong, well-documented predictors of U.S. mortality.' },
   { id: 'wellbeing', title: 'Wellbeing and overall health', blurb: 'Social connection, mood and how you rate your own health.' },
 ];
 
@@ -668,6 +668,144 @@ FACTORS.push(
       opt('fair', 'Fair', 1.44, 0.13),
       opt('poor', 'Poor', 1.92, 0.05),
     ],
+  },
+);
+
+
+// Fatty-liver stages: all-cause hazard ratios vs. matched general population (Simon 2021).
+// Cirrhosis: annual mortality by clinical stage (D'Amico 2006: about 1-3% a year compensated,
+// 20-57% a year once decompensated).
+const LIVER = [
+  { id: 'none', label: 'No', hr: 1 },
+  { id: 'masld', label: 'Fatty liver (MASLD/NAFLD) without inflammation or scarring', hr: 1.71 },
+  { id: 'mash', label: 'Fatty liver with inflammation (MASH/NASH), no significant scarring', hr: 2.14 },
+  { id: 'fibrosis', label: 'Liver fibrosis (scarring) without cirrhosis, any cause', hr: 2.44 },
+  { id: 'cirrhosis', label: 'Cirrhosis, compensated (no ascites, bleeding, confusion or jaundice)', excess: 0.022 },
+  { id: 'decomp', label: 'Cirrhosis with complications (ascites, variceal bleeding, encephalopathy or jaundice)', excess: 0.3 },
+];
+
+/* ---------- Demographics: race/ethnicity and state ---------- */
+// Age-specific hazard ratios calibrated so that, applied to the SSA baseline, they reproduce
+// each group's published life expectancy relative to the U.S. total at each anchor age
+// (NCHS U.S. Life Tables 2024, Table A; NCHS U.S. State Life Tables 2022, Tables A and B).
+// These differences reflect social, economic and health-care conditions, not biology.
+FACTORS.push(
+  {
+    id: 'race',
+    section: 'life',
+    label: 'Race and ethnicity',
+    question: 'Which best describes your race or ethnicity? (Optional)',
+    help: 'U.S. life expectancy differs by race and ethnicity because of differences in income, access to care, neighborhood, discrimination and other social conditions, not genetics. Insurers are not allowed to use race; it is included here because you asked for a fuller picture, and you can skip it.',
+    group: 'ses',
+    attenuation: 0,
+    normalized: true,
+    modifiable: false,
+    cite: ['nchsLT2024'],
+    options: [
+      opt('white', 'White, non-Hispanic', null, 0, { anchors: [[20, 1.009], [40, 1.03], [50, 1.021], [65, 1.026], [75, 1.033], [85, 1.049]] }),
+      opt('hispanic', 'Hispanic or Latino (any race)', null, 0, { anchors: [[20, 0.78], [40, 0.761], [50, 0.762], [65, 0.767], [75, 0.766], [85, 0.784]] }),
+      opt('aian', 'American Indian or Alaska Native, non-Hispanic', null, 0, { anchors: [[20, 1.843], [40, 1.633], [50, 1.415], [65, 1.067], [75, 0.84], [85, 0.641]] }),
+      opt('asian', 'Asian, non-Hispanic', null, 0, { anchors: [[20, 0.552], [40, 0.562], [50, 0.575], [65, 0.608], [75, 0.641], [85, 0.693]] }),
+      opt('black', 'Black, non-Hispanic', null, 0, { anchors: [[20, 1.353], [40, 1.31], [50, 1.273], [65, 1.2], [75, 1.05], [85, 0.933]] }),
+      opt('other', 'Another race, or more than one', null, 0, { anchors: [[20, 1], [85, 1]] }),
+    ],
+  },
+  {
+    id: 'state',
+    section: 'life',
+    ui: 'dropdown',
+    label: 'State of residence',
+    question: 'Which state do you live in?',
+    help: 'Life expectancy at birth ranges from 72.2 years (West Virginia) to 80.0 (Hawaii).',
+    group: 'ses',
+    attenuation: 0,
+    normalized: true,
+    modifiable: false,
+    cite: ['nchsState2022'],
+    options: [
+      opt("alabama", "Alabama", null, 0, { anchors: [[20, 1.38], [65, 1.278]] }),
+      opt("alaska", "Alaska", null, 0, { anchors: [[20, 1.161], [65, 1.041]] }),
+      opt("arizona", "Arizona", null, 0, { anchors: [[20, 1.073], [65, 1.014]] }),
+      opt("arkansas", "Arkansas", null, 0, { anchors: [[20, 1.369], [65, 1.296]] }),
+      opt("california", "California", null, 0, { anchors: [[20, 0.852], [65, 0.899]] }),
+      opt("colorado", "Colorado", null, 0, { anchors: [[20, 0.915], [65, 0.935]] }),
+      opt("connecticut", "Connecticut", null, 0, { anchors: [[20, 0.844], [65, 0.887]] }),
+      opt("delaware", "Delaware", null, 0, { anchors: [[20, 1.092], [65, 1.014]] }),
+      opt("district-of-columbia", "District of Columbia", null, 0, { anchors: [[20, 1.083], [65, 1.027]] }),
+      opt("florida", "Florida", null, 0, { anchors: [[20, 0.965], [65, 0.935]] }),
+      opt("georgia", "Georgia", null, 0, { anchors: [[20, 1.151], [65, 1.145]] }),
+      opt("hawaii", "Hawaii", null, 0, { anchors: [[20, 0.799], [65, 0.809]] }),
+      opt("idaho", "Idaho", null, 0, { anchors: [[20, 0.923], [65, 0.987]] }),
+      opt("illinois", "Illinois", null, 0, { anchors: [[20, 1], [65, 1.027]] }),
+      opt("indiana", "Indiana", null, 0, { anchors: [[20, 1.202], [65, 1.177]] }),
+      opt("iowa", "Iowa", null, 0, { anchors: [[20, 0.965], [65, 1.027]] }),
+      opt("kansas", "Kansas", null, 0, { anchors: [[20, 1.092], [65, 1.114]] }),
+      opt("kentucky", "Kentucky", null, 0, { anchors: [[20, 1.404], [65, 1.332]] }),
+      opt("louisiana", "Louisiana", null, 0, { anchors: [[20, 1.38], [65, 1.209]] }),
+      opt("maine", "Maine", null, 0, { anchors: [[20, 1.083], [65, 1.027]] }),
+      opt("maryland", "Maryland", null, 0, { anchors: [[20, 0.974], [65, 0.987]] }),
+      opt("massachusetts", "Massachusetts", null, 0, { anchors: [[20, 0.814], [65, 0.899]] }),
+      opt("michigan", "Michigan", null, 0, { anchors: [[20, 1.064], [65, 1.07]] }),
+      opt("minnesota", "Minnesota", null, 0, { anchors: [[20, 0.852], [65, 0.911]] }),
+      opt("mississippi", "Mississippi", null, 0, { anchors: [[20, 1.529], [65, 1.351]] }),
+      opt("missouri", "Missouri", null, 0, { anchors: [[20, 1.223], [65, 1.161]] }),
+      opt("montana", "Montana", null, 0, { anchors: [[20, 1.018], [65, 0.974]] }),
+      opt("nebraska", "Nebraska", null, 0, { anchors: [[20, 0.931], [65, 1]] }),
+      opt("nevada", "Nevada", null, 0, { anchors: [[20, 1.102], [65, 1.145]] }),
+      opt("new-hampshire", "New Hampshire", null, 0, { anchors: [[20, 0.899], [65, 0.974]] }),
+      opt("new-jersey", "New Jersey", null, 0, { anchors: [[20, 0.829], [65, 0.911]] }),
+      opt("new-mexico", "New Mexico", null, 0, { anchors: [[20, 1.3], [65, 1.027]] }),
+      opt("new-york", "New York", null, 0, { anchors: [[20, 0.836], [65, 0.887]] }),
+      opt("north-carolina", "North Carolina", null, 0, { anchors: [[20, 1.151], [65, 1.114]] }),
+      opt("north-dakota", "North Dakota", null, 0, { anchors: [[20, 0.965], [65, 0.923]] }),
+      opt("ohio", "Ohio", null, 0, { anchors: [[20, 1.182], [65, 1.161]] }),
+      opt("oklahoma", "Oklahoma", null, 0, { anchors: [[20, 1.38], [65, 1.332]] }),
+      opt("oregon", "Oregon", null, 0, { anchors: [[20, 0.982], [65, 1.014]] }),
+      opt("pennsylvania", "Pennsylvania", null, 0, { anchors: [[20, 1.018], [65, 1.027]] }),
+      opt("rhode-island", "Rhode Island", null, 0, { anchors: [[20, 0.859], [65, 0.935]] }),
+      opt("south-carolina", "South Carolina", null, 0, { anchors: [[20, 1.234], [65, 1.129]] }),
+      opt("south-dakota", "South Dakota", null, 0, { anchors: [[20, 1.018], [65, 0.935]] }),
+      opt("tennessee", "Tennessee", null, 0, { anchors: [[20, 1.38], [65, 1.26]] }),
+      opt("texas", "Texas", null, 0, { anchors: [[20, 1.036], [65, 1.084]] }),
+      opt("utah", "Utah", null, 0, { anchors: [[20, 0.875], [65, 0.987]] }),
+      opt("vermont", "Vermont", null, 0, { anchors: [[20, 0.931], [65, 0.923]] }),
+      opt("virginia", "Virginia", null, 0, { anchors: [[20, 1], [65, 1.055]] }),
+      opt("washington", "Washington", null, 0, { anchors: [[20, 0.923], [65, 0.974]] }),
+      opt("west-virginia", "West Virginia", null, 0, { anchors: [[20, 1.581], [65, 1.37]] }),
+      opt("wisconsin", "Wisconsin", null, 0, { anchors: [[20, 0.948], [65, 0.974]] }),
+      opt("wyoming", "Wyoming", null, 0, { anchors: [[20, 1.064], [65, 1.055]] }),
+    ],
+  },
+  {
+    id: 'dementia',
+    section: 'history',
+    label: 'Dementia',
+    question: 'Have you been diagnosed with dementia (including Alzheimer\u2019s disease)?',
+    group: 'conditions',
+    attenuation: 0,
+    modifiable: false,
+    cite: ['brodaty2012'],
+    options: [
+      opt('no', 'No', 1.0, 0.975),
+      opt('mild', 'Yes, mild (living mostly independently)', 2.5, 0.015),
+      opt('severe', 'Yes, moderate or severe (needs daily help)', 4.5, 0.01),
+    ],
+  },
+  {
+    id: 'liver',
+    section: 'history',
+    kind: 'excess',
+    label: 'Liver disease',
+    modifiable: false,
+    cite: ['simon2021', 'damico2006'],
+    questions: [{ key: 'status', question: 'Have you been diagnosed with liver disease?', options: LIVER.map(({ id, label }) => ({ id, label })) }],
+    resolve(a) { return a.liver && a.liver.status ? a.liver : null; },
+    excessAt(v, { baseMu }) {
+      const o = LIVER.find((x) => x.id === v.status);
+      if (!o) return 0;
+      return o.hr != null ? (o.hr - 1) * baseMu : o.excess;
+    },
+    describe(v) { const o = LIVER.find((x) => x.id === v.status); return o ? o.label : ''; },
   },
 );
 

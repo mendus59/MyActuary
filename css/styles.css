@@ -232,3 +232,4 @@ table.lt tr.now td { font-weight: 700; }
 .dbar-fill.neg { background: var(--loss); }
 .dbar-val { text-align: right; font-size: .88rem; font-variant-numeric: tabular-nums; }
 @media (max-width: 520px) { .dbar-row { grid-template-columns: 1fr 64px; } .dbar-track { grid-column: 1 / -1; grid-row: 2; } }
+.field select.wide-select { width: 320px; max-width: 100%; }

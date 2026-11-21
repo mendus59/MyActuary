@@ -217,6 +217,31 @@ export const CITATIONS = {
     full: 'Larney S, Tran LT, Leung J, et al. All-cause and cause-specific mortality among people using extramedical opioids: a systematic review and meta-analysis. JAMA Psychiatry. 2020;77(5):493-502.',
     doi: '10.1001/jamapsychiatry.2019.4170',
   },
+  nchsLT2024: {
+    short: 'NCHS, U.S. Life Tables 2024',
+    full: 'National Center for Health Statistics. United States Life Tables, 2024. National Vital Statistics Reports. 2026;75(5). Life expectancy by age, Hispanic origin and race (Table A).',
+    url: 'https://www.cdc.gov/nchs/data/nvsr/nvsr75/nvsr75-05.pdf',
+  },
+  nchsState2022: {
+    short: 'NCHS, U.S. State Life Tables 2022',
+    full: 'Arias E, Xu J, Tejada-Vera B, Bastian B. U.S. State Life Tables, 2022. National Vital Statistics Reports. 2025;74(12). Life expectancy at birth and at age 65 by state (Tables A and B).',
+    url: 'https://www.cdc.gov/nchs/data/nvsr/nvsr74/nvsr74-12.pdf',
+  },
+  simon2021: {
+    short: 'Simon et al., Gut 2021',
+    full: 'Simon TG, Roelstraete B, Khalili H, Hagstr\u00f6m H, Ludvigsson JF. Mortality in biopsy-confirmed nonalcoholic fatty liver disease: results from a nationwide cohort. Gut. 2021;70(7):1375-1382.',
+    doi: '10.1136/gutjnl-2020-322786',
+  },
+  damico2006: {
+    short: 'D\u2019Amico et al., J Hepatol 2006',
+    full: 'D\u2019Amico G, Garcia-Tsao G, Pagliaro L. Natural history and prognostic indicators of survival in cirrhosis: a systematic review of 118 studies. J Hepatol. 2006;44(1):217-231.',
+    doi: '10.1016/j.jhep.2005.10.013',
+  },
+  brodaty2012: {
+    short: 'Brodaty et al., Int Psychogeriatr 2012',
+    full: 'Brodaty H, Seeher K, Gibson L. Dementia time to death: a systematic literature review on survival time and years of life lost in people with dementia. Int Psychogeriatr. 2012;24(7):1034-1045.',
+    doi: '10.1017/S1041610211002924',
+  },
   nhanes: {
     short: 'CDC NCHS (NHANES / NHIS)',
     full: 'Centers for Disease Control and Prevention, National Center for Health Statistics. National Health and Nutrition Examination Survey (2017–March 2020) and National Health Interview Survey. Used for approximate U.S. adult prevalence of each risk level, which anchors the baseline table to the average population.',
