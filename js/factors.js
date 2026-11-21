@@ -316,8 +316,9 @@ export const FACTORS = [
     modifiable: false,
     cite: ['atkins2016', 'lloydjones2004'],
     options: [
-      opt('long', 'At least one parent lived to 90 or older', 0.85, 0.2),
-      opt('typical', 'Neither reached 90, and neither died of heart disease or stroke before 60', 1.0, 0.65),
+      opt('long', 'At least one parent is 90 or older now, or lived to 90 or older', 0.85, 0.2),
+      opt('living', 'Both parents are alive and under 90', 1.0, 0.25),
+      opt('typical', 'A parent has died before 90, but not of heart disease or stroke before 60', 1.0, 0.4),
       opt('early', 'A parent died of heart disease or stroke before age 60', 1.25, 0.15),
     ],
   },
