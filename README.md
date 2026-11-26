@@ -14,6 +14,9 @@ Build a personal actuarial life table from U.S. mortality data and evidence-base
 - Download a PDF report with the full methodology and 45 references, and load it later to pick up where you left off.
 <!-- site-summary:end -->
 
+<!-- site-screenshot: docs/screenshot.jpg -->
+![Screenshot of MyActuary](docs/screenshot.jpg)
+
 A private, client-side web app that builds a **personal actuarial life table**: year-by-year probabilities of death (qx), a survival curve, life expectancy, and a ranked list of the modifiable factors costing you the most years.
 
 **Live site:** https://mendus59.github.io/MyActuary/ (after GitHub Pages is enabled; see below)
